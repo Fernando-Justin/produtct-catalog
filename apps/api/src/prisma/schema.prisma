@@ -1,0 +1,342 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ─────────────────────────────────────────
+// USUARIOS E CARGOS
+// ─────────────────────────────────────────
+
+enum RoleType {
+  ADMIN
+  PO
+  DEV
+  SQUAD_LEAD
+  VIEWER
+}
+
+enum StatusGeneral {
+  ATIVO
+  INATIVO
+}
+
+model User {
+  id              Int           @id @default(autoincrement())
+  email           String        @unique
+  name            String
+  avatar          String?
+  googleId        String?       @unique
+  roleId          String?
+  role            Role?         @relation(fields: [roleId], references: [id])
+  squadId         String?
+  squad           Squad?        @relation(fields: [squadId], references: [id])
+  status          StatusGeneral @default(ATIVO)
+  
+  // RH / Colaborador
+  idAppRh         String?       @db.VarChar(20)
+  fullName        String?       @db.VarChar(150)
+  emailCorporate  String?       @db.VarChar(100)
+  cpf             String?       @db.Char(11)
+  admissionDate   DateTime?
+  observations    String?       @db.Text
+  
+  // Endereço
+  logradouro      String?       @db.VarChar(150)
+  numero          String?       @db.VarChar(10)
+  complemento     String?       @db.VarChar(50)
+  bairro          String?       @db.VarChar(80)
+  cidade          String?       @db.VarChar(80)
+  estado          String?       @db.Char(2)
+  cep             String?       @db.Char(8)
+
+  createdAt DateTime      @default(now())
+  updatedAt DateTime      @updatedAt
+
+  productDevs    ProductDev[]
+  roadmapItems   RoadmapItem[]
+
+  @@map("users")
+}
+
+model Role {
+  id          String     @id @default(cuid())
+  name        String     @unique
+  type        RoleType
+  description String?
+  status      StatusGeneral @default(ATIVO)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  users       User[]
+
+  @@map("roles")
+}
+
+// ─────────────────────────────────────────
+// SQUADS
+// ─────────────────────────────────────────
+
+model Squad {
+  id          String        @id @default(cuid())
+  name        String        @unique
+  description String?
+  status      StatusGeneral @default(ATIVO)
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  users    User[]
+  products Product[]
+
+  @@map("squads")
+}
+
+// ─────────────────────────────────────────
+// STACK TECNOLOGICO
+// ─────────────────────────────────────────
+
+enum StackType {
+  JAVA
+  GO
+  PYTHON
+  REACT
+  NODEJS
+  DOTNET
+  KOTLIN
+  TYPESCRIPT
+  VUE
+  ANGULAR
+  OUTROS
+}
+
+enum Environment {
+  HOMOLOGACAO
+  PRODUCAO
+  AMBOS
+}
+
+// ─────────────────────────────────────────
+// PRODUTOS
+// ─────────────────────────────────────────
+
+enum ProductStatus {
+  HOMOLOGACAO
+  PRODUCAO
+  DESCONTINUADO
+}
+
+model Product {
+  id                  String        @id @default(cuid())
+  name                String
+  description         String?
+  purpose             String?
+  observations        String?
+  confluenceUrl       String?
+  status              ProductStatus @default(HOMOLOGACAO)
+  squadId             String?
+  squad               Squad?        @relation(fields: [squadId], references: [id])
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
+
+  stacks       ProductStack[]
+  apps         App[]
+  devs         ProductDev[]
+  clients      Client[]
+  environments ProductEnvironment[]
+  roadmapItems RoadmapItem[]
+  links        ProductLink[]
+
+  @@map("products")
+}
+
+model ProductStack {
+  id          String      @id @default(cuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  stack       StackType
+  environment Environment @default(AMBOS)
+  version     String?
+
+  @@map("product_stacks")
+}
+
+model ProductDev {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id])
+  isLead    Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  @@unique([productId, userId])
+  @@map("product_devs")
+}
+
+// ─────────────────────────────────────────
+// APLICAÇÕES (Apps)
+// ─────────────────────────────────────────
+
+model App {
+  id               String        @id @default(cuid())
+  name             String
+  description      String?
+  purpose          String?
+  observations     String?
+  confluenceUrl    String?
+  status           ProductStatus @default(HOMOLOGACAO)
+  productId        String
+  product          Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt        DateTime      @default(now())
+  updatedAt        DateTime      @updatedAt
+
+  stacks       AppStack[]
+  environments AppEnvironment[]
+  links        AppLink[]
+
+  @@map("apps")
+}
+
+model AppStack {
+  id          String      @id @default(cuid())
+  appId       String
+  app         App         @relation(fields: [appId], references: [id], onDelete: Cascade)
+  stack       StackType
+  environment Environment @default(AMBOS)
+  version     String?
+
+  @@map("app_stacks")
+}
+
+model AppEnvironment {
+  id            String      @id @default(cuid())
+  appId         String
+  app           App         @relation(fields: [appId], references: [id], onDelete: Cascade)
+  environment   Environment
+  clusterUrl    String?
+  logsUrl       String?
+  argoUrl       String?
+  datadogUrl    String?
+  grafanaUrl    String?
+  otherLinks    Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([appId, environment])
+  @@map("app_environments")
+}
+
+model AppLink {
+  id          String   @id @default(cuid())
+  appId       String
+  app         App      @relation(fields: [appId], references: [id], onDelete: Cascade)
+  label       String
+  url         String
+  category    String?
+  createdAt   DateTime @default(now())
+
+  @@map("app_links")
+}
+
+model ProductEnvironment {
+  id            String      @id @default(cuid())
+  productId     String
+  product       Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  environment   Environment
+  clusterUrl    String?
+  logsUrl       String?
+  argoUrl       String?
+  datadogUrl    String?
+  grafanaUrl    String?
+  otherLinks    Json?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([productId, environment])
+  @@map("product_environments")
+}
+
+model ProductLink {
+  id        String   @id @default(cuid())
+  productId String
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  label     String
+  url       String
+  category  String?
+  createdAt DateTime @default(now())
+
+  @@map("product_links")
+}
+
+// ─────────────────────────────────────────
+// CLIENTES
+// ─────────────────────────────────────────
+
+model Client {
+  id          String   @id @default(cuid())
+  name        String
+  squadOrContact String?
+  description String?
+  productId   String
+  product     Product  @relation(fields: [productId], references: [id], onDelete: Cascade)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  suggestions ClientSuggestion[]
+
+  @@map("clients")
+}
+
+model ClientSuggestion {
+  id          String   @id @default(cuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  title       String
+  description String?
+  type        String?
+  status      String   @default("PENDENTE")
+  createdAt   DateTime @default(now())
+
+  @@map("client_suggestions")
+}
+
+// ─────────────────────────────────────────
+// ROADMAP E ATIVIDADES
+// ─────────────────────────────────────────
+
+enum ActivityStatus {
+  BACKLOG
+  IN_PROGRESS
+  BLOCKED
+  DONE
+}
+
+enum EffortLevel {
+  PP
+  P
+  M
+  G
+  GG
+}
+
+model RoadmapItem {
+  id            String         @id @default(cuid())
+  productId     String
+  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  title         String
+  description   String?
+  goalIndicator String?
+  plannedDate   DateTime?
+  effort        EffortLevel    @default(M)
+  status        ActivityStatus @default(BACKLOG)
+  assigneeId    Int?
+  assignee      User?          @relation(fields: [assigneeId], references: [id])
+  identifier    String?
+  order         Int            @default(0)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+
+  @@map("roadmap_items")
+}
