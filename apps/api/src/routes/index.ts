@@ -12,6 +12,8 @@ import { env } from '../config/env';
 
 const router = Router();
 
+const auth = authMiddleware as any;
+
 // Utilitário para garantir tipagem correta nas rotas autenticadas
 const asAuth = (fn: (req: AuthRequest, res: Response, next: NextFunction) => any): RequestHandler => fn as any;
 
@@ -51,19 +53,19 @@ if (env.GOOGLE_CLIENT_ID && env.GOOGLE_CLIENT_SECRET) {
   );
 }
 
-router.get('/auth/me', authMiddleware, asAuth(authController.me));
+router.get('/auth/me', auth, asAuth(authController.me));
 
 // ─── DASHBOARD ──────────────────────────────────────
-router.get('/dashboard/stats', authMiddleware, asAuth(dashboardController.stats));
+router.get('/dashboard/stats', auth, asAuth(dashboardController.stats));
 
 // ─── PRODUTOS ───────────────────────────────────────
-router.get('/products', authMiddleware, asAuth(productController.list));
-router.get('/products/:id', authMiddleware, asAuth(productController.get));
-router.post('/products', authMiddleware, asAuth(productController.create));
-router.put('/products/:id', authMiddleware, asAuth(productController.update));
-router.delete('/products/:id', authMiddleware, asAuth(productController.delete));
+router.get('/products', auth, asAuth(productController.list));
+router.get('/products/:id', auth, asAuth(productController.get));
+router.post('/products', auth, asAuth(productController.create));
+router.put('/products/:id', auth, asAuth(productController.update));
+router.delete('/products/:id', auth, asAuth(productController.delete));
 
-router.post('/products/:productId/devs', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/products/:productId/devs', auth, asAuth(async (req: AuthRequest, res: Response) => {
   try {
     const userId = parseInt(req.body.userId);
     if (isNaN(userId)) return res.status(400).json({ error: 'User ID inválido' });
@@ -73,7 +75,7 @@ router.post('/products/:productId/devs', authMiddleware, asAuth(async (req: Auth
     res.status(500).json({ error: 'Erro ao adicionar dev', detail: e.message });
   }
 }));
-router.delete('/products/:productId/devs/:userId', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/products/:productId/devs/:userId', auth, asAuth(async (req: AuthRequest, res: Response) => {
   try {
     await prisma.productDev.deleteMany({ 
       where: { 
@@ -87,16 +89,16 @@ router.delete('/products/:productId/devs/:userId', authMiddleware, asAuth(async 
   }
 }));
 
-router.post('/products/:productId/stacks', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/products/:productId/stacks', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const stack = await prisma.productStack.create({ data: { productId: req.params.productId, ...req.body } });
   res.status(201).json(stack);
 }));
-router.delete('/products/:productId/stacks/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/products/:productId/stacks/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.productStack.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 
-router.put('/products/:productId/environments/:envName', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.put('/products/:productId/environments/:envName', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const data = await prisma.productEnvironment.upsert({
     where: { productId_environment: { productId: req.params.productId, environment: req.params.envName as any } },
     update: req.body,
@@ -105,67 +107,67 @@ router.put('/products/:productId/environments/:envName', authMiddleware, asAuth(
   res.json(data);
 }));
 
-router.post('/products/:productId/links', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/products/:productId/links', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const link = await prisma.productLink.create({ data: { productId: req.params.productId, ...req.body } });
   res.status(201).json(link);
 }));
-router.delete('/products/:productId/links/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/products/:productId/links/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.productLink.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 
-router.get('/products/:productId/clients', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.get('/products/:productId/clients', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const clients = await prisma.client.findMany({ where: { productId: req.params.productId }, include: { suggestions: true } });
   res.json(clients);
 }));
-router.post('/products/:productId/clients', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/products/:productId/clients', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const client = await prisma.client.create({ data: { productId: req.params.productId, ...req.body } });
   res.status(201).json(client);
 }));
-router.put('/products/:productId/clients/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.put('/products/:productId/clients/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const client = await prisma.client.update({ where: { id: req.params.id }, data: req.body });
   res.json(client);
 }));
-router.delete('/products/:productId/clients/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/products/:productId/clients/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.client.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 
-router.post('/clients/:clientId/suggestions', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/clients/:clientId/suggestions', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const sug = await prisma.clientSuggestion.create({ data: { clientId: req.params.clientId, ...req.body } });
   res.status(201).json(sug);
 }));
-router.put('/suggestions/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.put('/suggestions/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const sug = await prisma.clientSuggestion.update({ where: { id: req.params.id }, data: req.body });
   res.json(sug);
 }));
-router.delete('/suggestions/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/suggestions/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.clientSuggestion.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 
 // ─── APPS ───────────────────────────────────────────
-router.get('/products/:productId/apps', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.get('/products/:productId/apps', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const apps = await prisma.app.findMany({
     where: { productId: req.params.productId },
     include: { stacks: true, environments: true, links: true },
   });
   res.json(apps);
 }));
-router.post('/products/:productId/apps', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.post('/products/:productId/apps', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const app = await prisma.app.create({ data: { productId: req.params.productId, ...req.body } });
   res.status(201).json(app);
 }));
-router.put('/apps/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.put('/apps/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const app = await prisma.app.update({ where: { id: req.params.id }, data: req.body });
   res.json(app);
 }));
-router.delete('/apps/:id', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.delete('/apps/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.app.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 
-router.put('/apps/:appId/environments/:envName', authMiddleware, asAuth(async (req: AuthRequest, res: Response) => {
+router.put('/apps/:appId/environments/:envName', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const data = await prisma.appEnvironment.upsert({
     where: { appId_environment: { appId: req.params.appId, environment: req.params.envName as any } },
     update: req.body,
@@ -175,28 +177,28 @@ router.put('/apps/:appId/environments/:envName', authMiddleware, asAuth(async (r
 }));
 
 // ─── ROADMAP ────────────────────────────────────────
-router.get('/roadmap', authMiddleware, asAuth(roadmapController.listAll));
-router.get('/products/:productId/roadmap', authMiddleware, asAuth(roadmapController.list));
-router.post('/roadmap', authMiddleware, asAuth(roadmapController.create));
-router.put('/roadmap/:id', authMiddleware, asAuth(roadmapController.update));
-router.delete('/roadmap/:id', authMiddleware, asAuth(roadmapController.delete));
+router.get('/roadmap', auth, asAuth(roadmapController.listAll));
+router.get('/products/:productId/roadmap', auth, asAuth(roadmapController.list));
+router.post('/roadmap', auth, asAuth(roadmapController.create));
+router.put('/roadmap/:id', auth, asAuth(roadmapController.update));
+router.delete('/roadmap/:id', auth, asAuth(roadmapController.delete));
 
 // ─── SQUADS ─────────────────────────────────────────
-router.get('/squads', authMiddleware, asAuth(squadController.list));
-router.post('/squads', authMiddleware, asAuth(squadController.create));
-router.put('/squads/:id', authMiddleware, asAuth(squadController.update));
-router.delete('/squads/:id', authMiddleware, asAuth(squadController.delete));
+router.get('/squads', auth, asAuth(squadController.list));
+router.post('/squads', auth, asAuth(squadController.create));
+router.put('/squads/:id', auth, asAuth(squadController.update));
+router.delete('/squads/:id', auth, asAuth(squadController.delete));
 
 // ─── USUÁRIOS ───────────────────────────────────────
-router.get('/users', authMiddleware, asAuth(userController.list));
-router.post('/users', authMiddleware, asAuth(userController.create));
-router.put('/users/:id', authMiddleware, asAuth(userController.update));
-router.delete('/users/:id', authMiddleware, asAuth(userController.delete));
+router.get('/users', auth, asAuth(userController.list));
+router.post('/users', auth, asAuth(userController.create));
+router.put('/users/:id', auth, asAuth(userController.update));
+router.delete('/users/:id', auth, asAuth(userController.delete));
 
 // ─── CARGOS ─────────────────────────────────────────
-router.get('/roles', authMiddleware, asAuth(roleController.list));
-router.post('/roles', authMiddleware, asAuth(roleController.create));
-router.put('/roles/:id', authMiddleware, asAuth(roleController.update));
-router.delete('/roles/:id', authMiddleware, asAuth(roleController.delete));
+router.get('/roles', auth, asAuth(roleController.list));
+router.post('/roles', auth, asAuth(roleController.create));
+router.put('/roles/:id', auth, asAuth(roleController.update));
+router.delete('/roles/:id', auth, asAuth(roleController.delete));
 
 export default router;

@@ -12,7 +12,7 @@ export const authController = {
     const token = jwt.sign(
       { id: user.id, email: user.email, name: user.name },
       env.JWT_SECRET,
-      { expiresIn: env.JWT_EXPIRES_IN }
+      { expiresIn: env.JWT_EXPIRES_IN as any }
     );
 
     res.redirect(`${env.FRONTEND_URL}/auth/callback?token=${token}`);
