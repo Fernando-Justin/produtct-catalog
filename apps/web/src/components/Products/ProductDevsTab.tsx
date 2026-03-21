@@ -30,17 +30,16 @@ export default function ProductDevsTab({ product, onRefresh }: Props) {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-1.5">
       <div className="flex justify-between items-center">
-        <h3 className="font-semibold text-slate-800">Devs / Sustentação ({product.devs?.length || 0})</h3>
+        <h3 className="text-slate-800 text-sm">Devs / Sustentação ({product.devs?.length || 0})</h3>
       </div>
 
       {/* Add Dev */}
-      <div className="bg-slate-50 rounded-xl border border-slate-200 p-4 flex items-end gap-3 flex-wrap">
+      <div className="bg-slate-50 rounded-xl border border-slate-200 p-2 flex items-end gap-2 flex-wrap">
         <div className="flex-1 min-w-48">
-          <label className="text-xs font-medium text-slate-600 mb-1 block">Adicionar Dev</label>
+          <label>Adicionar Dev</label>
           <select
-            className="w-full border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
             value={selectedUser}
             onChange={(e) => setSelectedUser(e.target.value)}
           >
@@ -48,25 +47,25 @@ export default function ProductDevsTab({ product, onRefresh }: Props) {
             {available.map((u) => <option key={u.id} value={u.id}>{u.name} — {u.role?.name || 'Sem cargo'}</option>)}
           </select>
         </div>
-        <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer mb-0.5">
+        <label className="flex items-center gap-1.5 cursor-pointer pb-2">
           <input type="checkbox" checked={isLead} onChange={(e) => setIsLead(e.target.checked)} className="rounded" />
-          Tech Lead
+          Head
         </label>
-        <button onClick={add} disabled={!selectedUser || saving} className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm hover:bg-primary-700 disabled:opacity-50 transition-colors">
+        <button onClick={add} disabled={!selectedUser || saving} className="bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
           <Plus size={14} /> Adicionar
         </button>
       </div>
 
       {/* Devs List */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
         {(product.devs || []).map((dev: any) => (
-          <div key={dev.id} className="bg-white rounded-xl border border-slate-200 p-4 flex items-center gap-3">
+          <div key={dev.id} className="bg-white rounded-xl border border-slate-200 p-2 flex items-center gap-2">
             <div className="relative">
               {dev.user.avatar ? (
-                <img src={dev.user.avatar} alt={dev.user.name} className="w-10 h-10 rounded-full object-cover" />
+                <img src={dev.user.avatar} alt={dev.user.name} className="w-8 h-8 rounded-full object-cover" />
               ) : (
-                <div className="w-10 h-10 rounded-full bg-primary-100 flex items-center justify-center">
-                  <User size={16} className="text-primary-600" />
+                <div className="w-8 h-8 rounded-full bg-primary-100 flex items-center justify-center">
+                  <User size={14} className="text-primary-600" />
                 </div>
               )}
               {dev.isLead && (
@@ -78,7 +77,7 @@ export default function ProductDevsTab({ product, onRefresh }: Props) {
             <div className="flex-1 min-w-0">
               <p className="font-medium text-slate-800 text-sm truncate">{dev.user.name}</p>
               <p className="text-xs text-slate-400 truncate">{dev.user.role?.name || dev.user.email}</p>
-              {dev.isLead && <p className="text-xs text-amber-600 font-medium">Tech Lead</p>}
+              {dev.isLead && <p className="text-xs text-amber-600 font-medium">Head</p>}
             </div>
             <button onClick={() => remove(dev.userId)} className="p-1.5 hover:bg-red-50 rounded-lg transition-colors shrink-0">
               <Trash2 size={14} className="text-red-400" />

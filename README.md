@@ -1,180 +1,94 @@
-# Product Catalog
+# 📦 ProductSQUAD Manager
 
-Sistema de gerenciamento de produtos, aplicações e roadmap com gestão de squads, devs e clientes.
+> Sistema centralizado para gestão de Catálogo de Produtos, Roadmaps de Evolução e Sustentação Técnica.
 
----
-
-## Stack
-
-- **Frontend**: React + Vite + TypeScript + Tailwind CSS
-- **Backend**: Node.js + Express + TypeScript
-- **Banco de Dados**: PostgreSQL + Prisma ORM
-- **Autenticação**: Google OAuth 2.0 + JWT
-- **Monorepo**: Turborepo
+O **ProductSQUAD Manager** foi concebido para ser a "Single Source of Truth" de um ecossistema de produtos digitais. Ele permite que líderes de produto (POs/PMs), Tech Leads e Squads tenham uma visão clara da saúde técnica, roadmap de evolução e dependências de cada produto da companhia.
 
 ---
 
-## Estrutura
+## 🎯 Propósito do Sistema
 
-```
-product-catalog/
-├── apps/
-│   ├── web/          # Frontend React (porta 3000)
-│   └── api/          # Backend Express (porta 3001)
-└── packages/
-    └── shared/       # Tipos TypeScript compartilhados
-```
+O objetivo principal é eliminar documentos esparsos e planilhas de controle, consolidando:
 
----
-
-## Funcionalidades
-
-### 📦 Catálogo de Produtos
-- Cadastro com descrição, propósito e observações
-- Link de documentação no Confluence
-- Status: Homologação / Produção / Descontinuado
-- Vínculo com Squad responsável
-
-### 🖥️ Aplicações (Apps)
-- Apps vinculadas a cada produto
-- Status por app (Homologação / Produção)
-- Ambientes com links: Cluster, Logs, ArgoCD, Datadog, Grafana
-
-### 🛠️ Stack Tecnológica
-- Java, Go, Python, React, Node.js e Outros
-- Definição por ambiente (Homologação / Produção / Ambos)
-
-### 👥 Devs e Sustentação
-- Lista de devs por produto
-- Identificação de Tech Lead
-- Perfil com cargo e squad
-
-### 🤝 Clientes
-- Nome da aplicação cliente / squad de contato
-- Descritivo de uso
-- Lista de sugestões de evolução e integração
-
-### 🌐 Ambientes de Infraestrutura
-- Links de Cluster, Logs, ArgoCD, Datadog, Grafana
-- Separado por Homologação e Produção
-
-### 🗺️ Roadmap
-- Nome, descrição e indicador de meta
-- Data prevista e esforço (PP / P / M / G / GG)
-- Status: Backlog / In Progress / Blocked / Done
-- Responsável (dev assignee)
-- ID/identificador da atividade
-- Atualização de status inline
-
-### 📊 Dashboard
-- Totalizadores: Produtos, Apps, Devs, Clientes
-- Gráficos: Status das atividades, Esforço por atividade, Tecnologias mais usadas
-
-### 🏢 Cadastros de Apoio
-- Squads (nome, descrição, status)
-- Usuários (vinculação com cargo e squad)
-- Cargos (PO, Dev, Squad Lead, Admin, Viewer)
+1.  **Visibilidade Técnica**: Quais tecnologias (Stack) cada produto utiliza em cada ambiente.
+2.  **Gestão de Sustentação**: Quem são os desenvolvedores alocados e quem responde tecnicamente (Head/Tech Lead).
+3.  **Transparência de Roadmap**: Evolução das atividades via Kanban, com indicadores de % de conclusão e gestão de pontos de risco.
+4.  **Integração com Clientes**: Registro de quais outras aplicações ou squads consomem o produto e quais são suas sugestões de melhoria.
+5.  **Centralização de Infraestrutura**: Acesso rápido a links de monitoramento (Grafana, Datadog), orquestração (ArgoCD) e logs das aplicações.
 
 ---
 
-## Setup
+## 🚀 Como Iniciar (Setup Local)
 
-### Pré-requisitos
+### 📋 Pré-requisitos
+*   **Node.js** v18 ou superior.
+*   **Git** instalado.
+*   **Supabase** (ou qualquer instância PostgreSQL).
 
-- Node.js 18+
-- PostgreSQL 14+
-- Conta Google Cloud (para OAuth)
-
-### 1. Clone e instale dependências
-
+### 1. Clonar o Repositório
 ```bash
-git clone <repo>
-cd product-catalog
+git clone https://github.com/Fernando-Justin/produtct-catalog.git
+cd produtct-catalog
 npm install
 ```
 
-### 2. Configure as variáveis de ambiente
-
-```bash
-cp .env.example .env
-```
-
-Edite o arquivo `.env` com suas credenciais:
-
-```env
-DATABASE_URL="postgresql://user:password@localhost:5432/product_catalog"
-GOOGLE_CLIENT_ID=seu_client_id
-GOOGLE_CLIENT_SECRET=seu_client_secret
-GOOGLE_CALLBACK_URL=http://localhost:3001/api/auth/google/callback
-JWT_SECRET=uma_chave_secreta_segura
-FRONTEND_URL=http://localhost:3000
-PORT=3001
-```
-
-### 3. Configure o Google OAuth
-
-1. Acesse [Google Cloud Console](https://console.cloud.google.com/)
-2. Crie ou selecione um projeto
-3. Vá em **APIs e Serviços → Credenciais → Criar credenciais → ID do cliente OAuth 2.0**
-4. Tipo: **Aplicativo Web**
-5. Origens autorizadas: `http://localhost:3000`
-6. URIs de redirecionamento: `http://localhost:3001/api/auth/google/callback`
-7. Copie o Client ID e Secret para o `.env`
-
-### 4. Configure o banco de dados
-
+### 2. Configuração do Backend (apps/api)
+Navegue até a pasta da API e configure o ambiente:
 ```bash
 cd apps/api
-npx prisma migrate dev --name init
+cp .env.example .env
+```
+Edite o arquivo `.env` com as seguintes chaves essenciais:
+*   `DATABASE_URL`: URL de conexão do PostgreSQL (ver seção Supabase abaixo).
+*   `JWT_SECRET`: Uma chave aleatória para segurança dos tokens.
+*   `GOOGLE_CLIENT_ID` / `SECRET`: Credenciais para login via Google (opcional para dev-login).
+
+### 3. Configuração do Supabase (Banco de Dados)
+Este projeto utiliza o **Supabase** como persistência de dados.
+1.  Crie um projeto no [Supabase Console](https://supabase.com).
+2.  Em **Project Settings -> Database**, copie a **Connection String** (Transaction mode).
+3.  Cole no campo `DATABASE_URL` do seu `.env`.
+4.  Execute as migrações para criar as tabelas:
+```bash
+npx prisma migrate dev
 npx prisma generate
 ```
 
-### 5. Configure o VITE_API_URL no frontend
-
-Crie `apps/web/.env`:
-```env
-VITE_API_URL=http://localhost:3001/api
+### 4. Configuração do Frontend (apps/web)
+Certifique-se de que o frontend sabe onde a API está rodando:
+```bash
+cd apps/web
+# O arquivo .env deve conter:
+# VITE_API_URL=http://localhost:3001
 ```
 
-### 6. Inicie em desenvolvimento
-
-Na raiz do projeto:
+### 5. Rodar o Projeto
+Na raiz do repositório, utilize o Turborepo para subir tudo simultaneamente:
 ```bash
 npm run dev
 ```
-
-Acesse: http://localhost:3000
-
----
-
-## Modelos de Dados
-
-### Principais entidades:
-- **Product** → Squad, Stacks, Apps, Devs, Clients, Environments, Links, RoadmapItems
-- **App** → Stacks, Environments, Links
-- **RoadmapItem** → Product, Assignee (User)
-- **Client** → Product, Suggestions
-- **User** → Role, Squad
-- **Squad** → Users, Products
+O sistema estará disponível em:
+*   Frontend: [http://localhost:3000](http://localhost:3000)
+*   API: [http://localhost:3001](http://localhost:3001)
 
 ---
 
-## API Endpoints
+## 🛠️ Stack Tecnológica
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | /api/auth/google | Iniciar login Google |
-| GET | /api/auth/me | Usuário autenticado |
-| GET | /api/dashboard/stats | Estatísticas do dashboard |
-| GET | /api/products | Listar produtos |
-| POST | /api/products | Criar produto |
-| GET | /api/products/:id | Detalhe do produto |
-| PUT | /api/products/:id | Atualizar produto |
-| DELETE | /api/products/:id | Excluir produto |
-| GET | /api/products/:id/roadmap | Roadmap do produto |
-| GET | /api/roadmap | Todos os itens de roadmap |
-| POST | /api/roadmap | Criar atividade |
-| PUT | /api/roadmap/:id | Atualizar atividade |
-| GET | /api/squads | Listar squads |
-| GET | /api/users | Listar usuários |
-| GET | /api/roles | Listar cargos |
+*   **Frontend**: React 18, Tailwind CSS (Alta Densidade Visual), Lucide React.
+*   **Backend**: Node.js, Express, Prisma ORM.
+*   **Banco de Dados**: PostgreSQL (Via Supabase).
+*   **Gestão**: Turborepo, TypeScript.
+
+---
+
+## 🔄 Fluxo de Desenvolvimento e Git
+
+Sempre que realizar alterações:
+1.  Verifique a integridade do banco: `npx prisma generate`.
+2.  Faça o commit das alterações:
+```bash
+git add .
+git commit -m "feat: descrição da nova funcionalidade"
+git push origin main
+```

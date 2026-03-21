@@ -8,6 +8,22 @@
     @apply bg-slate-50 text-slate-900 antialiased;
     font-family: 'Inter', system-ui, -apple-system, sans-serif;
   }
+  
+  h1, h2, h3 { 
+    @apply mb-1.5 font-bold tracking-tight text-slate-900 leading-tight;
+  }
+
+  label {
+    @apply mb-0.5 block leading-tight text-xs font-medium text-slate-600;
+  }
+
+  input, select, textarea {
+    @apply py-1 px-2.5 text-sm border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white;
+  }
+
+  button {
+    @apply py-1.5 px-3 text-sm font-medium transition-colors;
+  }
 }
 
 @layer utilities {

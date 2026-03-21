@@ -97,9 +97,17 @@ router.delete('/products/:productId/stacks/:id', auth, asAuth(async (req: AuthRe
   await prisma.productStack.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
-
 router.put('/products/:productId/environments/:envName', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const data = await prisma.productEnvironment.upsert({
+    where: { productId_environment: { productId: req.params.productId, environment: req.params.envName as any } },
+    update: req.body,
+    create: { productId: req.params.productId, environment: req.params.envName as any, ...req.body },
+  });
+  res.json(data);
+}));
+
+router.put('/products/:productId/databases/:envName', auth, asAuth(async (req: AuthRequest, res: Response) => {
+  const data = await prisma.productDatabase.upsert({
     where: { productId_environment: { productId: req.params.productId, environment: req.params.envName as any } },
     update: req.body,
     create: { productId: req.params.productId, environment: req.params.envName as any, ...req.body },
@@ -164,6 +172,15 @@ router.put('/apps/:id', auth, asAuth(async (req: AuthRequest, res: Response) => 
 }));
 router.delete('/apps/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
   await prisma.app.delete({ where: { id: req.params.id } });
+  res.status(204).send();
+}));
+
+router.post('/apps/:appId/stacks', auth, asAuth(async (req: AuthRequest, res: Response) => {
+  const stack = await prisma.appStack.create({ data: { appId: req.params.appId, ...req.body } });
+  res.status(201).json(stack);
+}));
+router.delete('/apps/:appId/stacks/:id', auth, asAuth(async (req: AuthRequest, res: Response) => {
+  await prisma.appStack.delete({ where: { id: req.params.id } });
   res.status(204).send();
 }));
 

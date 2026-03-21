@@ -15,15 +15,20 @@ interface Product {
 }
 
 const STATUS_COLORS: Record<string, string> = {
-  HOMOLOGACAO: 'bg-amber-100 text-amber-700',
-  PRODUCAO: 'bg-green-100 text-green-700',
-  DESCONTINUADO: 'bg-slate-100 text-slate-500',
+  ATIVO: 'bg-green-100 text-green-700',
+  INATIVO: 'bg-red-100 text-red-700',
+  DEPRECIADO: 'bg-amber-100 text-amber-700',
+  PLANEJADO: 'bg-blue-100 text-blue-700',
 };
 
 const STACK_COLORS: Record<string, string> = {
-  JAVA: 'bg-orange-100 text-orange-700', GO: 'bg-cyan-100 text-cyan-700',
+  JAVA: 'bg-orange-100 text-orange-700', GO_LANG: 'bg-cyan-100 text-cyan-700',
   PYTHON: 'bg-blue-100 text-blue-700', REACT: 'bg-sky-100 text-sky-700',
-  NODEJS: 'bg-green-100 text-green-700', OUTROS: 'bg-slate-100 text-slate-600',
+  NODEJS: 'bg-green-100 text-green-700', DOTNET: 'bg-indigo-100 text-indigo-700',
+  TYPESCRIPT: 'bg-blue-100 text-blue-700', PHP: 'bg-purple-100 text-purple-700',
+  RUST: 'bg-orange-100 text-orange-700', NEXT_JS: 'bg-black text-white',
+  POSTGRESQL: 'bg-blue-100 text-blue-800', MONGODB: 'bg-green-100 text-green-800',
+  OUTROS: 'bg-slate-100 text-slate-600',
 };
 
 export default function ProductsPage() {
@@ -40,49 +45,49 @@ export default function ProductsPage() {
   );
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-xl font-bold text-slate-900">Produtos</h1>
-          <p className="text-slate-500 text-xs">{products.length} cadastrado(s)</p>
+          <h1 className="text-lg">Produtos</h1>
+          <p className="text-slate-500 text-[10px] leading-tight">{products.length} cadastrado(s)</p>
         </div>
         <button
           onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-primary-600 text-white rounded-lg text-sm font-medium hover:bg-primary-700 transition-colors"
+          className="bg-primary-600 text-white rounded-lg"
         >
-          <Plus size={16} /> Novo Produto
+          <Plus size={14} /> Novo Produto
         </button>
       </div>
 
       {/* Search */}
       <div className="relative">
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+        <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
         <input
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           placeholder="Buscar produto ou squad..."
-          className="w-full pl-9 pr-4 py-2.5 border border-slate-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white"
+          className="w-full pl-8"
         />
       </div>
 
       {/* Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-2">
         {filtered.map((p) => (
           <Link
             key={p.id}
             to={`/products/${p.id}`}
-            className="bg-white rounded-xl border border-slate-200 hover:border-primary-300 hover:shadow-md transition-all p-5 group"
+            className="bg-white rounded-xl border border-slate-200 hover:border-primary-300 hover:shadow-md transition-all p-3 group"
           >
-            <div className="flex items-start justify-between mb-3">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 bg-primary-100 rounded-lg flex items-center justify-center shrink-0">
-                  <Package size={18} className="text-primary-600" />
+            <div className="flex items-start justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <div className="w-8 h-8 bg-primary-100 rounded flex items-center justify-center shrink-0">
+                  <Package size={16} className="text-primary-600" />
                 </div>
                 <div>
-                  <h3 className="font-semibold text-slate-800 group-hover:text-primary-600 transition-colors leading-tight">
+                  <h3 className="text-slate-800 group-hover:text-primary-600 transition-colors leading-tight text-sm font-semibold">
                     {p.name}
                   </h3>
-                  {p.squad && <p className="text-xs text-slate-400 mt-0.5">{p.squad.name}</p>}
+                  {p.squad && <p className="text-[10px] text-slate-400 leading-tight mt-0.5">{p.squad.name}</p>}
                 </div>
               </div>
               <div className="flex items-center gap-1.5">
@@ -94,20 +99,20 @@ export default function ProductsPage() {
             </div>
 
             {p.description && (
-              <p className="text-sm text-slate-500 line-clamp-2 mb-3">{p.description}</p>
+              <p className="text-xs text-slate-500 line-clamp-2 mb-2 leading-tight">{p.description}</p>
             )}
 
             {/* Stacks */}
-            <div className="flex flex-wrap gap-1.5 mb-3">
+            <div className="flex flex-wrap gap-1 mb-2">
               {[...new Set(p.stacks.map((s) => s.stack))].slice(0, 5).map((s) => (
-                <span key={s} className={`text-xs px-2 py-0.5 rounded-full font-medium ${STACK_COLORS[s] || STACK_COLORS.OUTROS}`}>
+                <span key={s} className={`text-[10px] px-1.5 py-0.5 rounded-full font-medium ${STACK_COLORS[s] || STACK_COLORS.OUTROS}`}>
                   {s}
                 </span>
               ))}
             </div>
 
             {/* Counters */}
-            <div className="flex gap-4 pt-3 border-t border-slate-100 text-xs text-slate-400">
+            <div className="flex gap-3 pt-2 border-t border-slate-100 text-[10px] text-slate-400">
               <span>{p._count.apps} apps</span>
               <span>{p._count.clients} clientes</span>
               <span>{p._count.roadmapItems} atividades</span>

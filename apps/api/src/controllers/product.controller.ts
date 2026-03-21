@@ -33,6 +33,7 @@ export const productController = {
           apps: { include: { stacks: true, environments: true, links: true } },
           clients: { include: { suggestions: true } },
           environments: true,
+          databases: true,
           links: true,
           roadmapItems: { include: { assignee: true }, orderBy: { order: 'asc' } },
         },
@@ -246,6 +247,7 @@ export const roadmapController = {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
       if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
+      if (data.completion !== undefined) data.completion = parseInt(data.completion);
       
       const item = await prisma.roadmapItem.create({ data, include: { assignee: true } });
       res.status(201).json(item);
@@ -258,6 +260,7 @@ export const roadmapController = {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
       if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
+      if (data.completion !== undefined) data.completion = parseInt(data.completion);
       
       const item = await prisma.roadmapItem.update({ where: { id: req.params.id }, data, include: { assignee: true } });
       res.json(item);
@@ -282,7 +285,7 @@ export const roadmapController = {
 export const dashboardController = {
   stats: async (_req: AuthRequest, res: Response) => {
     try {
-      const [totalProducts, totalApps, totalDevs, totalClients, statusCounts, effortCounts, stackCounts] = await Promise.all([
+      const [totalProducts, totalApps, totalDevs, totalClients, statusCounts, effortCounts, stackCounts, roadmapByProduct, roadmapByUser] = await Promise.all([
         prisma.product.count(),
         prisma.app.count(),
         prisma.user.count(),
@@ -290,8 +293,47 @@ export const dashboardController = {
         prisma.roadmapItem.groupBy({ by: ['status'], _count: true }),
         prisma.roadmapItem.groupBy({ by: ['effort'], _count: true }),
         prisma.productStack.groupBy({ by: ['stack'], _count: true }),
+        prisma.roadmapItem.groupBy({ by: ['productId'], _count: true }),
+        prisma.roadmapItem.groupBy({ by: ['assigneeId'], _count: true }),
       ]);
-      res.json({ totalProducts, totalApps, totalDevs, totalClients, statusCounts, effortCounts, stackCounts });
+      
+      const [products, users, roadmapItems] = await Promise.all([
+        prisma.product.findMany({ select: { id: true, name: true } }),
+        prisma.user.findMany({ select: { id: true, name: true } }),
+        prisma.roadmapItem.findMany({ 
+          where: { status: { not: 'DONE' }, plannedDate: { not: null } },
+          select: { plannedDate: true } 
+        }),
+      ]);
+
+      const now = new Date();
+      const deadlines = {
+        overdue: roadmapItems.filter(i => i.plannedDate! < now).length,
+        soon: roadmapItems.filter(i => {
+          const due = new Date(i.plannedDate!);
+          const diff = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+          return diff >= 0 && diff <= 7;
+        }).length,
+        future: roadmapItems.filter(i => {
+          const due = new Date(i.plannedDate!);
+          const diff = (due.getTime() - now.getTime()) / (1000 * 60 * 60 * 24);
+          return diff > 7;
+        }).length,
+      };
+
+      res.json({ 
+        totalProducts, totalApps, totalDevs, totalClients, 
+        statusCounts, effortCounts, stackCounts,
+        deadlines,
+        roadmapByProduct: roadmapByProduct.map(r => ({ 
+          name: products.find(p => p.id === r.productId)?.name || 'Desconhecido', 
+          count: r._count 
+        })),
+        roadmapByUser: roadmapByUser.map(r => ({ 
+          name: users.find(u => u.id === r.assigneeId)?.name || 'Não atribuído', 
+          count: r._count 
+        }))
+      });
     } catch (e: any) {
       res.status(500).json({ error: 'Erro ao buscar estatísticas', detail: e.message });
     }

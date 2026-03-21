@@ -18,7 +18,7 @@ export default function ProductFormModal({ product, onClose, onSaved }: Props) {
     purpose: product?.purpose || '',
     observations: product?.observations || '',
     confluenceUrl: product?.confluenceUrl || '',
-    status: product?.status || 'HOMOLOGACAO',
+    status: product?.status || 'PLANEJADO',
     squadId: product?.squadId || '',
   });
   const [saving, setSaving] = useState(false);
@@ -58,15 +58,15 @@ export default function ProductFormModal({ product, onClose, onSaved }: Props) {
         </div>
       )}
       <div className="bg-white rounded-2xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col">
-        <div className="flex items-center justify-between px-5 py-3 border-b border-slate-200">
-          <h2 className="font-semibold text-slate-900">{product ? 'Editar Produto' : 'Novo Produto'}</h2>
-          <button onClick={onClose} className="p-1.5 hover:bg-slate-100 rounded-lg transition-colors"><X size={16} /></button>
+        <div className="flex items-center justify-between px-3 py-1.5 border-b border-slate-200">
+          <h2 className="text-slate-900">{product ? 'Editar Produto' : 'Novo Produto'}</h2>
+          <button onClick={onClose} className="p-1 hover:bg-slate-100 rounded transition-colors"><X size={14} /></button>
         </div>
-        <div className="overflow-y-auto flex-1 px-5 py-4 space-y-3">
+        <div className="overflow-y-auto flex-1 px-3 py-2 space-y-1.5">
           <Field label="Nome *">
             <input className={input} value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} placeholder="Nome do produto" />
           </Field>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <Field label="Squad">
               <select className={input} value={form.squadId} onChange={(e) => setForm({ ...form, squadId: e.target.value })}>
                 <option value="">Selecionar...</option>
@@ -75,9 +75,10 @@ export default function ProductFormModal({ product, onClose, onSaved }: Props) {
             </Field>
             <Field label="Status">
               <select className={input} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                <option value="HOMOLOGACAO">Homologação</option>
-                <option value="PRODUCAO">Produção</option>
-                <option value="DESCONTINUADO">Descontinuado</option>
+                <option value="ATIVO">Ativo</option>
+                <option value="INATIVO">Inativo</option>
+                <option value="DEPRECIADO">Depreciado</option>
+                <option value="PLANEJADO">Planejado</option>
               </select>
             </Field>
           </div>
@@ -94,9 +95,9 @@ export default function ProductFormModal({ product, onClose, onSaved }: Props) {
             <input className={input} value={form.confluenceUrl} onChange={(e) => setForm({ ...form, confluenceUrl: e.target.value })} placeholder="https://..." />
           </Field>
         </div>
-        <div className="flex justify-end gap-3 px-5 py-3 border-t border-slate-200">
-          <button onClick={onClose} className="px-3 py-1.5 text-sm border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
-          <button onClick={handleSubmit} disabled={saving || !form.name} className="px-3 py-1.5 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors disabled:opacity-50">
+        <div className="flex justify-end gap-2 px-3 py-2 border-t border-slate-200">
+          <button onClick={onClose} className="border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors">Cancelar</button>
+          <button onClick={handleSubmit} disabled={saving || !form.name} className="bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
             {saving ? 'Salvando...' : 'Salvar'}
           </button>
         </div>
@@ -105,11 +106,11 @@ export default function ProductFormModal({ product, onClose, onSaved }: Props) {
   );
 }
 
-const input = 'w-full border border-slate-200 rounded px-2.5 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500';
+const input = 'w-full';
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div>
-      <label className="block text-xs font-medium text-slate-600 mb-0.5">{label}</label>
+      <label>{label}</label>
       {children}
     </div>
   );

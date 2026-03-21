@@ -11,6 +11,9 @@ interface Stats {
   statusCounts: { status: string; _count: number }[];
   effortCounts: { effort: string; _count: number }[];
   stackCounts: { stack: string; _count: number }[];
+  roadmapByProduct: { name: string; count: number }[];
+  roadmapByUser: { name: string; count: number }[];
+  deadlines?: { overdue: number; soon: number; future: number };
 }
 
 const STATUS_COLORS: Record<string, string> = {
@@ -125,9 +128,73 @@ export default function DashboardPage() {
         </div>
       </div>
 
+      {/* Charts Row 2 - Roadmap Analysis */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Atividades por Produto */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <Package size={14} /> Atividades por Produto
+          </h2>
+          {stats?.roadmapByProduct && stats.roadmapByProduct.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.roadmapByProduct} layout="vertical">
+                <XAxis type="number" hide />
+                <YAxis dataKey="name" type="category" width={100} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#6366f1" radius={[0, 4, 4, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+          )}
+        </div>
+
+        {/* Atividades por Usuário */}
+        <div className="bg-white rounded-xl border border-slate-200 p-5">
+          <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+            <Users size={14} /> Atividades por Usuário
+          </h2>
+          {stats?.roadmapByUser && stats.roadmapByUser.length > 0 ? (
+            <ResponsiveContainer width="100%" height={220}>
+              <BarChart data={stats.roadmapByUser}>
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Bar dataKey="count" fill="#ec4899" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="h-[220px] flex items-center justify-center text-slate-400 text-sm">Sem dados</div>
+          )}
+        </div>
+      </div>
+
+      {/* Prazos / Deadlines */}
+      <div className="bg-white rounded-xl border border-slate-200 p-5">
+        <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <Clock size={16} className="text-red-500" /> Próximos Prazos (Pendentes)
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="bg-red-50 border border-red-100 rounded-lg p-5 flex flex-col items-center text-center">
+            <p className="text-3xl font-bold text-red-600">{stats?.deadlines?.overdue ?? 0}</p>
+            <p className="text-xs text-red-500 font-bold uppercase tracking-wider mt-1">Atrasadas</p>
+          </div>
+          <div className="bg-amber-50 border border-amber-100 rounded-lg p-5 flex flex-col items-center text-center">
+            <p className="text-3xl font-bold text-amber-600">{stats?.deadlines?.soon ?? 0}</p>
+            <p className="text-xs text-amber-500 font-bold uppercase tracking-wider mt-1">Vencendo nos prx. 7 dias</p>
+          </div>
+          <div className="bg-blue-50 border border-blue-100 rounded-lg p-5 flex flex-col items-center text-center">
+            <p className="text-3xl font-bold text-blue-600">{stats?.deadlines?.future ?? 0}</p>
+            <p className="text-xs text-blue-500 font-bold uppercase tracking-wider mt-1">Dentro do Prazo (Futuras)</p>
+          </div>
+        </div>
+      </div>
+
       {/* Stacks */}
       <div className="bg-white rounded-xl border border-slate-200 p-5">
-        <h2 className="text-sm font-semibold text-slate-700 mb-4">Tecnologias mais utilizadas</h2>
+        <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
+          <Boxes size={14} /> Tecnologias mais utilizadas
+        </h2>
         {stackData.length > 0 ? (
           <ResponsiveContainer width="100%" height={180}>
             <BarChart data={stackData} layout="vertical">

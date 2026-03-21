@@ -98,16 +98,38 @@ model Squad {
 // ─────────────────────────────────────────
 
 enum StackType {
+  // Linguagem
   JAVA
-  GO
+  GO_LANG
   PYTHON
   REACT
   NODEJS
   DOTNET
-  KOTLIN
+  RUST
   TYPESCRIPT
-  VUE
-  ANGULAR
+  PHP
+
+  // Frameworks
+  SPRING_BOOT
+  GIN
+  FAST_API
+  NEXT_JS
+  EXPRESS
+  NEST_JS
+  ASP_NET_CORE
+  LARAVEL
+  SYMFONY
+
+  // Banco de Dados
+  POSTGRESQL
+  MYSQL
+  ORACLE
+  SQL_SERVER
+  NOSQL
+  MONGODB
+  REDIS
+  KEYDB
+
   OUTROS
 }
 
@@ -122,9 +144,10 @@ enum Environment {
 // ─────────────────────────────────────────
 
 enum ProductStatus {
-  HOMOLOGACAO
-  PRODUCAO
-  DESCONTINUADO
+  ATIVO
+  INATIVO
+  DEPRECIADO
+  PLANEJADO
 }
 
 model Product {
@@ -134,7 +157,7 @@ model Product {
   purpose             String?
   observations        String?
   confluenceUrl       String?
-  status              ProductStatus @default(HOMOLOGACAO)
+  status              ProductStatus @default(PLANEJADO)
   squadId             String?
   squad               Squad?        @relation(fields: [squadId], references: [id])
   createdAt           DateTime      @default(now())
@@ -145,10 +168,28 @@ model Product {
   devs         ProductDev[]
   clients      Client[]
   environments ProductEnvironment[]
+  databases    ProductDatabase[]
   roadmapItems RoadmapItem[]
   links        ProductLink[]
 
   @@map("products")
+}
+
+model ProductDatabase {
+  id          String      @id @default(cuid())
+  productId   String
+  product     Product     @relation(fields: [productId], references: [id], onDelete: Cascade)
+  environment Environment
+  url         String?
+  host        String?
+  database    String?
+  username    String?
+  password    String?
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([productId, environment])
+  @@map("product_databases")
 }
 
 model ProductStack {
@@ -186,7 +227,7 @@ model App {
   purpose          String?
   observations     String?
   confluenceUrl    String?
-  status           ProductStatus @default(HOMOLOGACAO)
+  status           ProductStatus @default(PLANEJADO)
   productId        String
   product          Product       @relation(fields: [productId], references: [id], onDelete: Cascade)
   createdAt        DateTime      @default(now())
@@ -333,8 +374,11 @@ model RoadmapItem {
   status        ActivityStatus @default(BACKLOG)
   assigneeId    Int?
   assignee      User?          @relation(fields: [assigneeId], references: [id])
+  confluenceUrl String?
   identifier    String?
   order         Int            @default(0)
+  completion    Int            @default(0)
+  riskPoint     String?        @db.Text
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
 
