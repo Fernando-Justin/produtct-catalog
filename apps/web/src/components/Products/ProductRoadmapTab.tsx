@@ -10,9 +10,10 @@ const STATUS_COLORS: Record<string, string> = {
   IN_PROGRESS: 'bg-blue-100 text-blue-700',
   BLOCKED: 'bg-red-100 text-red-700',
   DONE: 'bg-green-100 text-green-700',
+  ARCHIVED: 'bg-slate-200 text-slate-500',
 };
 const STATUS_LABELS: Record<string, string> = {
-  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído',
+  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído', ARCHIVED: 'Arquivado',
 };
 const EFFORT_LABELS: Record<string, string> = { PP: 'PP', P: 'P', M: 'M', G: 'G', GG: 'GG' };
 const EFFORT_COLORS: Record<string, string> = {
@@ -33,6 +34,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
   const [saving, setSaving] = useState(false);
   const [filter, setFilter] = useState('ALL');
   const [viewMode, setViewMode] = useState<ViewMode>('KANBAN');
+  const [showArchived, setShowArchived] = useState(false);
 
   const load = () => api.get(`/products/${product.id}/roadmap`).then((r) => setItems(r.data));
   useEffect(() => { load(); api.get('/users').then((r) => setUsers(r.data)); }, [product.id]);
@@ -72,7 +74,34 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
     await api.put(`/roadmap/${id}`, { status }); load();
   };
 
-  const filtered = filter === 'ALL' ? items : items.filter((i) => i.status === filter);
+  const exportCSV = () => {
+    const headers = ['ID', 'Título', 'Desc.', 'Responsável', 'Status', 'Esforço', 'Prazo', 'Ev. %', 'Risco'];
+    const rows = filtered.map(i => [
+      i.identifier || '',
+      i.title,
+      i.description || '',
+      i.assignee?.name || '',
+      STATUS_LABELS[i.status],
+      i.effort,
+      i.plannedDate ? new Date(i.plannedDate).toLocaleDateString('pt-BR') : '',
+      `${i.completion}%`,
+      i.riskPoint || ''
+    ]);
+
+    const content = [headers, ...rows].map(r => r.map(c => `"${c.toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `roadmap_${product.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
+
+  const filtered = items.filter(item => {
+    if (showArchived) return item.status === 'ARCHIVED';
+    if (item.status === 'ARCHIVED') return false;
+    if (filter !== 'ALL' && item.status !== filter) return false;
+    return true;
+  });
 
   return (
     <div className="space-y-1.5">
@@ -94,7 +123,24 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
             </button>
           </div>
 
-          <button onClick={openNew} className="bg-primary-600 text-white rounded-lg">
+          <label className="flex items-center gap-1.5 px-2 py-1 bg-slate-50 border border-slate-200 rounded text-[10px] font-bold cursor-pointer hover:bg-slate-100 transition-colors">
+            <input 
+              type="checkbox" 
+              checked={showArchived} 
+              onChange={(e) => setShowArchived(e.target.checked)}
+              className="w-3.5 h-3.5 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+            />
+            <span className="text-slate-600 uppercase tracking-tight">Arquivados</span>
+          </label>
+
+          <button 
+            onClick={exportCSV}
+            className="flex items-center gap-1.5 px-2 py-1 bg-white border border-slate-200 rounded text-[10px] font-bold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            <ExternalLink size={12} /> CSV
+          </button>
+
+          <button onClick={openNew} className="bg-primary-600 text-white rounded-lg px-2 py-1 flex items-center gap-1 text-[10px] font-bold">
             <Plus size={14} /> Nova Atividade
           </button>
         </div>
@@ -171,8 +217,8 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
 
       {/* View Switcher Output */}
       {viewMode === 'LIST' && <ListView filtered={filtered} openEdit={openEdit} remove={remove} updateStatus={updateStatus} />}
-      {viewMode === 'KANBAN' && <KanbanView items={items} openEdit={openEdit} updateStatus={updateStatus} />}
-      {viewMode === 'TIMELINE' && <TimelineView items={items} users={users} />}
+      {viewMode === 'KANBAN' && <KanbanView items={items} showArchived={showArchived} openEdit={openEdit} updateStatus={updateStatus} />}
+      {viewMode === 'TIMELINE' && <TimelineView items={items} users={users} showArchived={showArchived} />}
     </div>
   );
 }
@@ -247,11 +293,11 @@ function ListView({ filtered, openEdit, remove, updateStatus }: any) {
   );
 }
 
-function KanbanView({ items, openEdit, updateStatus }: any) {
-  const columns = Object.entries(STATUS_LABELS);
+function KanbanView({ items, showArchived, openEdit, updateStatus }: any) {
+  const columns = Object.entries(STATUS_LABELS).filter(([key]) => showArchived ? key === 'ARCHIVED' : key !== 'ARCHIVED');
   
   return (
-    <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start pb-4">
+    <div className={`grid grid-cols-1 md:grid-cols-${columns.length} gap-4 items-start pb-4`}>
       {columns.map(([key, label]) => {
         const columnItems = items.filter((i: any) => i.status === key);
         return (
@@ -312,7 +358,7 @@ function KanbanView({ items, openEdit, updateStatus }: any) {
   );
 }
 
-function TimelineView({ items, users }: any) {
+function TimelineView({ items, users, showArchived }: any) {
   return (
     <div className="bg-white rounded-xl border border-slate-200 p-6 shadow-sm overflow-x-auto">
       <div className="mb-6">
@@ -324,7 +370,7 @@ function TimelineView({ items, users }: any) {
 
       <div className="space-y-8">
         {users.map((u: any) => {
-          const userTasks = items.filter((i: any) => i.assigneeId === u.id).sort((a: any, b: any) => (a.plannedDate || '').localeCompare(b.plannedDate || ''));
+          const userTasks = items.filter((i: any) => i.assigneeId === u.id && (showArchived ? i.status === 'ARCHIVED' : i.status !== 'ARCHIVED')).sort((a: any, b: any) => (a.plannedDate || '').localeCompare(b.plannedDate || ''));
           if (userTasks.length === 0) return null;
 
           return (
@@ -356,7 +402,7 @@ function TimelineView({ items, users }: any) {
             </div>
           );
         })}
-        {items.filter((i: any) => !i.assigneeId).length > 0 && (
+        {items.filter((i: any) => !i.assigneeId && (showArchived ? i.status === 'ARCHIVED' : i.status !== 'ARCHIVED')).length > 0 && (
            <div className="relative pt-4 border-t border-slate-100">
               <div className="flex items-center gap-3 mb-4">
                  <div className="w-10 h-10 rounded-full bg-slate-50 border-2 border-dashed border-slate-300 flex items-center justify-center text-slate-300">
@@ -367,7 +413,7 @@ function TimelineView({ items, users }: any) {
                 </div>
               </div>
               <div className="flex gap-3 pb-2">
-                {items.filter((i: any) => !i.assigneeId).map((t: any) => (
+                {items.filter((i: any) => !i.assigneeId && (showArchived ? i.status === 'ARCHIVED' : i.status !== 'ARCHIVED')).map((t: any) => (
                   <div key={t.id} className="shrink-0 w-48 bg-slate-50 border border-slate-200 rounded-lg p-3 opacity-60">
                     <p className="text-xs font-semibold text-slate-800 line-clamp-2 h-8">{t.title}</p>
                     <div className="mt-2 text-[10px] text-slate-500">

@@ -7,9 +7,10 @@ const STATUS_COLORS: Record<string, string> = {
   IN_PROGRESS: 'bg-blue-100 text-blue-700',
   BLOCKED: 'bg-red-100 text-red-700',
   DONE: 'bg-green-100 text-green-700',
+  ARCHIVED: 'bg-slate-200 text-slate-500',
 };
 const STATUS_LABELS: Record<string, string> = {
-  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído',
+  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído', ARCHIVED: 'Arquivado',
 };
 const EFFORT_COLORS: Record<string, string> = {
   PP: 'bg-slate-100 text-slate-600', P: 'bg-blue-50 text-blue-600',
@@ -28,6 +29,10 @@ export default function RoadmapPage() {
   const [filterProduct, setFilterProduct] = useState('ALL');
   const [filterUser, setFilterUser] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [showArchived, setShowArchived] = useState(false);
+  const [editItem, setEditItem] = useState<any>(null);
+  const [form, setForm] = useState<any>({});
+  const [saving, setSaving] = useState(false);
 
   const load = () => {
     api.get('/roadmap').then((r) => setItems(r.data));
@@ -42,12 +47,72 @@ export default function RoadmapPage() {
     load();
   };
 
+  const updateAssignee = async (id: string, assigneeId: string) => {
+    await api.put(`/roadmap/${id}`, { assigneeId: assigneeId ? parseInt(assigneeId) : null });
+    load();
+  };
+
+  const openEdit = (item: any) => {
+    setEditItem(item);
+    setForm({
+      title: item.title,
+      description: item.description || '',
+      goalIndicator: item.goalIndicator || '',
+      plannedDate: item.plannedDate ? item.plannedDate.slice(0, 10) : '',
+      effort: item.effort,
+      status: item.status,
+      assigneeId: item.assigneeId || '',
+      identifier: item.identifier || '',
+      completion: item.completion || 0,
+      riskPoint: item.riskPoint || '',
+    });
+  };
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await api.put(`/roadmap/${editItem.id}`, {
+        ...form,
+        assigneeId: form.assigneeId ? parseInt(form.assigneeId) : null,
+        plannedDate: form.plannedDate ? new Date(form.plannedDate).toISOString() : null,
+      });
+      setEditItem(null);
+      load();
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const filtered = items.filter((i) => {
     if (filterProduct !== 'ALL' && i.productId !== filterProduct) return false;
     if (filterUser !== 'ALL' && i.assigneeId?.toString() !== filterUser) return false;
     if (searchTerm && !i.title.toLowerCase().includes(searchTerm.toLowerCase()) && !i.identifier?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+    if (!showArchived && i.status === 'ARCHIVED') return false;
+    if (showArchived && i.status !== 'ARCHIVED') return false;
     return true;
   });
+
+  const exportCSV = () => {
+    const headers = ['Produto', 'ID', 'Título', 'Responsável', 'Status', 'Esforço', 'Data Prevista', 'Conclusão %', 'Risco'];
+    const rows = filtered.map(i => [
+      i.product?.name || '',
+      i.identifier || '',
+      i.title,
+      i.assignee?.name || '',
+      STATUS_LABELS[i.status],
+      i.effort,
+      i.plannedDate ? new Date(i.plannedDate).toLocaleDateString('pt-BR') : '',
+      `${i.completion}%`,
+      i.riskPoint || ''
+    ]);
+
+    const content = [headers, ...rows].map(r => r.map(c => `"${c.toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = `roadmap_${new Date().toISOString().split('T')[0]}.csv`;
+    link.click();
+  };
 
   return (
     <div className="space-y-4">
@@ -58,6 +123,13 @@ export default function RoadmapPage() {
         </div>
 
         <div className="flex items-center gap-3">
+          <button 
+            onClick={exportCSV}
+            className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
+          >
+            <ExternalLink size={14} /> Exportar CSV
+          </button>
+
           <div className="flex bg-slate-100 p-1 rounded-lg">
             <button onClick={() => setViewMode('KANBAN')} className={`p-1.5 rounded-md transition-all ${viewMode === 'KANBAN' ? 'bg-white shadow-sm text-primary-600' : 'text-slate-500 hover:text-slate-700'}`}>
               <Layout size={18} />
@@ -100,14 +172,86 @@ export default function RoadmapPage() {
           {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
         </select>
 
+        <label className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:bg-slate-100 transition-colors">
+          <input 
+            type="checkbox" 
+            checked={showArchived} 
+            onChange={(e) => setShowArchived(e.target.checked)}
+            className="w-4 h-4 text-primary-600 rounded border-slate-300 focus:ring-primary-500"
+          />
+          <span className="text-sm font-medium text-slate-700">Ver Arquivados</span>
+        </label>
+
+        {editItem && (
+          <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h2 className="font-bold text-slate-800">Editar Atividade</h2>
+                <button onClick={() => setEditItem(null)} className="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+              </div>
+              <div className="p-4 space-y-3 max-h-[80vh] overflow-y-auto">
+                <div className="grid grid-cols-4 gap-2">
+                   <div className="col-span-1">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">ID</label>
+                      <input className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.identifier} onChange={(e) => setForm({...form, identifier: e.target.value})} />
+                   </div>
+                   <div className="col-span-3">
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Título</label>
+                      <input className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} />
+                   </div>
+                </div>
+                <div>
+                   <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Detalhamento</label>
+                   <textarea className="w-full text-sm p-1.5 border border-slate-200 rounded" rows={2} value={form.description} onChange={(e) => setForm({...form, description: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                   <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">% Evolução</label>
+                      <input type="number" className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.completion} onChange={(e) => setForm({...form, completion: parseInt(e.target.value) || 0})} />
+                   </div>
+                   <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Prevista</label>
+                      <input type="date" className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.plannedDate} onChange={(e) => setForm({...form, plannedDate: e.target.value})} />
+                   </div>
+                </div>
+                <div>
+                   <label className="block text-[10px] font-bold text-red-400 uppercase mb-1">Ponto de Risco</label>
+                   <textarea className="w-full text-sm p-1.5 border border-red-100 bg-red-50/30 rounded text-red-700" rows={2} value={form.riskPoint} onChange={(e) => setForm({...form, riskPoint: e.target.value})} />
+                </div>
+                <div className="grid grid-cols-2 gap-2">
+                   <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Responsável</label>
+                      <select className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.assigneeId} onChange={(e) => setForm({...form, assigneeId: e.target.value})}>
+                        <option value="">Ninguém</option>
+                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                      </select>
+                   </div>
+                   <div>
+                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+                      <select className="w-full text-sm p-1.5 border border-slate-200 rounded" value={form.status} onChange={(e) => setForm({...form, status: e.target.value})}>
+                        {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                      </select>
+                   </div>
+                </div>
+              </div>
+              <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+                <button onClick={() => setEditItem(null)} className="px-4 py-1.5 text-sm font-semibold text-slate-500 hover:text-slate-700">Cancelar</button>
+                <button onClick={save} disabled={saving} className="px-6 py-1.5 bg-primary-600 text-white text-sm font-bold rounded-lg shadow-sm hover:bg-primary-700 transition-all disabled:opacity-50">
+                  {saving ? 'Gravando...' : 'Gravar Alterações'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-auto">
           {filtered.length} Atividades
         </div>
       </div>
 
       {viewMode === 'KANBAN' ? (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 items-start">
-          {Object.entries(STATUS_LABELS).map(([key, label]) => {
+        <div className={`grid grid-cols-1 md:grid-cols-${showArchived ? 1 : 4} gap-4 items-start`}>
+          {Object.entries(STATUS_LABELS).filter(([key]) => showArchived ? key === 'ARCHIVED' : key !== 'ARCHIVED').map(([key, label]) => {
             const columnItems = filtered.filter(i => i.status === key);
             return (
               <div key={key} className="flex flex-col bg-slate-50/50 rounded-xl p-2 border border-slate-100 min-h-[500px]">
@@ -118,7 +262,7 @@ export default function RoadmapPage() {
                 
                 <div className="space-y-3">
                   {columnItems.map(item => (
-                    <div key={item.id} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-primary-400 transition-all group">
+                    <div key={item.id} onClick={() => openEdit(item)} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-primary-400 transition-all group cursor-pointer relative">
                       <div className="flex justify-between items-start mb-2">
                         <span className="text-[9px] font-mono text-slate-400 uppercase">{item.identifier || 'Task'}</span>
                         <div className="flex gap-1">
@@ -201,16 +345,14 @@ export default function RoadmapPage() {
                     </div>
                   </td>
                   <td className="px-3 py-1.5 text-xs">
-                    {item.assignee ? (
-                      <div className="flex items-center gap-2">
-                        <div className="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-[10px]">
-                          {item.assignee.name.charAt(0)}
-                        </div>
-                        <span className="text-slate-600">{item.assignee.name}</span>
-                      </div>
-                    ) : (
-                      <span className="text-slate-300">Não atribuído</span>
-                    )}
+                    <select
+                      value={item.assigneeId || ''}
+                      onChange={(e) => updateAssignee(item.id, e.target.value)}
+                      className="bg-transparent border-0 text-slate-600 focus:ring-0 cursor-pointer hover:text-primary-600 transition-colors p-0 text-xs"
+                    >
+                      <option value="">Não atribuído</option>
+                      {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                    </select>
                   </td>
                   <td className="px-3 py-1.5">
                     <select
