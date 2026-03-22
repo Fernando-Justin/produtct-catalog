@@ -12,6 +12,7 @@ import SquadsPage from './pages/SquadsPage';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
 import ProjectsPage from './pages/ProjectsPage';
+import AboutPage from './pages/AboutPage';
 
 export default function App() {
 
@@ -39,6 +40,7 @@ export default function App() {
             <Route path="squads" element={<SquadsPage />} />
             <Route path="users" element={<UsersPage />} />
             <Route path="roles" element={<RolesPage />} />
+            <Route path="about" element={<AboutPage />} />
           </Route>
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>

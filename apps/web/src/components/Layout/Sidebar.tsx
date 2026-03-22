@@ -14,6 +14,7 @@ const nav = [
   { to: '/squads', icon: Boxes, label: 'Squads' },
   { to: '/users', icon: Users, label: 'Usuários' },
   { to: '/roles', icon: Shield, label: 'Cargos' },
+  { to: '/about', icon: Users, label: 'Sobre' },
 ];
 
 
@@ -60,8 +61,9 @@ export default function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-3 border-t border-slate-700/50">
-        <p className="text-slate-500 text-xs text-center">v1.0.0</p>
+      <div className="px-3 py-3 border-t border-slate-700/50 flex justify-between items-center bg-slate-900/50">
+        <p className="text-slate-600 font-bold text-[10px] uppercase tracking-tighter">By Justin</p>
+        <p className="text-slate-500 text-[10px] font-medium">v1.0.0</p>
       </div>
     </aside>
   );

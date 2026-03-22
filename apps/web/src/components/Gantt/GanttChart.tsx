@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { ChevronDown, ChevronRight, User, Package, FolderKanban, Calendar } from 'lucide-react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { ChevronDown, ChevronRight, User, Package, FolderKanban, Calendar, Check, AlertTriangle } from 'lucide-react';
 
 interface GanttChartProps {
   items: any[];
@@ -60,6 +60,17 @@ export default function GanttChart({ items, projects, products, onEditTask, getU
 
     return Object.values(projMap).filter(p => Object.keys(p.products).length > 0);
   }, [items, projects, products]);
+
+  // Expand all by default
+  useEffect(() => {
+    if (groupedData.length > 0) {
+      const initial: Record<string, boolean> = {};
+      groupedData.forEach(p => {
+        initial[p.id] = true;
+      });
+      setExpandedProjects(initial);
+    }
+  }, [groupedData.length]);
 
   const toggleProject = (id: string) => {
     setExpandedProjects(prev => ({ ...prev, [id]: !prev[id] }));
@@ -126,7 +137,7 @@ export default function GanttChart({ items, projects, products, onEditTask, getU
               <div key={project.id} className="border-b border-slate-100">
                 {/* Project Row */}
                 <div className="flex group hover:bg-slate-50 transition-colors cursor-pointer" onClick={() => toggleProject(project.id)}>
-                  <div className="w-64 border-r border-slate-200 py-2 px-3 flex items-center gap-2 sticky left-0 bg-white group-hover:bg-slate-50 z-30 shadow-[4px_0_10px_-4px_rgba(0,0,0,0.05)]">
+                  <div className="w-64 border-r border-slate-200 py-2 px-3 flex items-center gap-2 sticky left-0 bg-white group-hover:bg-slate-50 z-30 shadow-[4px_0_10_px_-4px_rgba(0,0,0,0.05)]">
                     {expandedProjects[project.id] ? <ChevronDown size={14} className="text-slate-400" /> : <ChevronRight size={14} className="text-slate-400" />}
                     <FolderKanban size={14} className="text-primary-500" />
                     <span className="text-xs font-bold text-slate-800 truncate uppercase tracking-tight">{project.name}</span>
@@ -168,7 +179,11 @@ export default function GanttChart({ items, projects, products, onEditTask, getU
                         <div key={item.id} className="flex group hover:bg-slate-50 transition-colors border-b border-slate-50/50">
                           <div className="w-64 border-r border-slate-200 py-1.5 px-9 flex items-center gap-2 sticky left-0 bg-white group-hover:bg-slate-50 z-30 overflow-hidden relative">
                              <div className={`shrink-0 w-1.5 h-1.5 rounded-full ${getUserColor(item.assigneeId)}`} />
-                             <span className="text-[10px] text-slate-500 truncate font-medium">{item.title}</span>
+                             <div className="flex items-center gap-1 min-w-0 flex-1">
+                               <span className="text-[10px] text-slate-500 truncate font-medium">{item.title}</span>
+                               {item.status === 'DONE' && <Check size={8} className="text-green-600 shrink-0 font-bold" />}
+                               {item.riskPoint && <AlertTriangle size={8} className="text-red-500 shrink-0 animate-pulse" />}
+                             </div>
                           </div>
                           <div className="flex-1 h-8 relative flex items-center">
                             {/* Grid Lines */}
@@ -182,16 +197,21 @@ export default function GanttChart({ items, projects, products, onEditTask, getU
                             {isVisible && (
                               <div 
                                 onClick={() => onEditTask(item)}
-                                className={`absolute h-5 rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.01] hover:brightness-110 flex items-center px-2 group/bar overflow-hidden ${getUserColor(item.assigneeId)} ${getStatusOpacity(item.status)}`}
+                                className={`absolute h-5 rounded-md shadow-sm cursor-pointer transition-all hover:scale-[1.01] hover:brightness-110 flex items-center px-1.5 group/bar overflow-hidden ${getUserColor(item.assigneeId)} ${getStatusOpacity(item.status)}`}
                                 style={{ 
                                   left: `${barStart * 32}px`, 
                                   width: `${duration * 32}px`,
                                   zIndex: 10
                                 }}
                               >
-                                <span className="text-[9px] font-black text-white truncate drop-shadow-md uppercase tracking-tight">
+                                <span className="text-[9px] font-black text-white truncate drop-shadow-md uppercase tracking-tight flex-1">
                                   {item.assignee?.name?.split(' ')[0] || '—'}
                                 </span>
+                                
+                                <div className="flex items-center gap-0.5 shrink-0 ml-1">
+                                  {item.riskPoint && <AlertTriangle size={8} className="text-white drop-shadow-sm animate-pulse" />}
+                                  {item.status === 'DONE' && <Check size={8} className="text-white drop-shadow-sm font-black" />}
+                                </div>
                                 
                                 {item.completion > 0 && item.completion < 100 && (
                                   <div className="absolute bottom-0 left-0 h-0.5 bg-black/20" style={{ width: `${item.completion}%` }} />
