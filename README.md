@@ -1,8 +1,8 @@
 # 📦 ProductSQUAD Manager
 
-> Sistema centralizado para gestão de Catálogo de Produtos, Roadmaps de Evolução e Sustentação Técnica.
+> Sistema centralizado para gestão de Catálogo de Produtos, Deliveries (Entregas) e Sustentação Técnica.
 
-O **ProductSQUAD Manager** foi concebido para ser a "Single Source of Truth" de um ecossistema de produtos digitais. Ele permite que líderes de produto (POs/PMs), Tech Leads e Squads tenham uma visão clara da saúde técnica, roadmap de evolução e dependências de cada produto da companhia.
+O **ProductSQUAD Manager** foi concebido para ser a "Single Source of Truth" de um ecossistema de produtos digitais. Ele permite que líderes de produto (POs/PMs), Tech Leads e Squads tenham uma visão clara da saúde técnica, entregas (Delivery) e dependências de cada produto da companhia.
 
 ---
 
@@ -12,7 +12,7 @@ O objetivo principal é eliminar documentos esparsos e planilhas de controle, co
 
 1.  **Visibilidade Técnica**: Quais tecnologias (Stack) cada produto utiliza em cada ambiente.
 2.  **Gestão de Sustentação**: Quem são os desenvolvedores alocados e quem responde tecnicamente (Head/Tech Lead).
-3.  **Transparência de Roadmap**: Evolução das atividades via Kanban, com indicadores de % de conclusão e gestão de pontos de risco.
+3.  **Transparência de Delivery**: Evolução das entregas via Kanban, com indicadores de % de conclusão e gestão de pontos de risco.
 4.  **Integração com Clientes**: Registro de quais outras aplicações ou squads consomem o produto e quais são suas sugestões de melhoria.
 5.  **Centralização de Infraestrutura**: Acesso rápido a links de monitoramento (Grafana, Datadog), orquestração (ArgoCD) e logs das aplicações.
 

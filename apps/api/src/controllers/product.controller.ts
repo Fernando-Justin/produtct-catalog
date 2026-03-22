@@ -235,7 +235,10 @@ export const roadmapController = {
     try {
       const items = await prisma.roadmapItem.findMany({
         include: { assignee: true, product: true },
-        orderBy: { plannedDate: 'asc' },
+        orderBy: [
+          { product: { name: 'asc' } },
+          { title: 'asc' }
+        ],
       });
       res.json(items);
     } catch (e: any) {
@@ -276,6 +279,58 @@ export const roadmapController = {
     } catch (e: any) {
       if (e.code === 'P2025') return res.status(404).json({ error: 'Item não encontrado' });
       res.status(500).json({ error: 'Erro ao deletar item do roadmap', detail: e.message });
+    }
+  },
+  importItems: async (req: AuthRequest, res: Response) => {
+    try {
+      const { items } = req.body;
+      const results = { created: 0, updated: 0, errors: [] as any[] };
+
+      for (const item of items) {
+        try {
+          const product = await prisma.product.findFirst({
+            where: { name: { equals: item.productName, mode: 'insensitive' } }
+          });
+          if (!product) throw new Error(`Produto não encontrado: ${item.productName}`);
+
+          let assigneeId: number | null = null;
+          if (item.assigneeEmail) {
+            const user = await prisma.user.findUnique({ where: { email: item.assigneeEmail } });
+            if (user) assigneeId = user.id;
+          }
+
+          const data: any = {
+            title: item.title,
+            description: item.description || null,
+            status: (item.status || 'BACKLOG').toUpperCase(),
+            effort: (item.effort || 'M').toUpperCase(),
+            plannedDate: item.plannedDate ? new Date(item.plannedDate) : null,
+            completion: parseInt(item.completion) || 0,
+            riskPoint: item.riskPoint || null,
+            identifier: item.identifier || null,
+            confluenceUrl: item.confluenceUrl || null,
+            productId: product.id,
+            assigneeId,
+          };
+
+          if (item.identifier) {
+            const existing = await prisma.roadmapItem.findFirst({ where: { identifier: item.identifier } });
+            if (existing) {
+              await prisma.roadmapItem.update({ where: { id: existing.id }, data });
+              results.updated++;
+              continue;
+            }
+          }
+
+          await prisma.roadmapItem.create({ data });
+          results.created++;
+        } catch (e: any) {
+          results.errors.push({ item: item.title || item.identifier, error: e.message });
+        }
+      }
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao importar itens', detail: e.message });
     }
   },
 };

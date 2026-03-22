@@ -133,7 +133,7 @@ export default function DashboardPage() {
         {/* Atividades por Produto */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <Package size={14} /> Atividades por Produto
+            <Package size={14} /> Entregas por Produto
           </h2>
           {stats?.roadmapByProduct && stats.roadmapByProduct.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
         {/* Atividades por Usuário */}
         <div className="bg-white rounded-xl border border-slate-200 p-5">
           <h2 className="text-sm font-semibold text-slate-700 mb-4 flex items-center gap-2">
-            <Users size={14} /> Atividades por Usuário
+            <Users size={14} /> Entregas por Usuário
           </h2>
           {stats?.roadmapByUser && stats.roadmapByUser.length > 0 ? (
             <ResponsiveContainer width="100%" height={220}>

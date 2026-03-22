@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { Calendar, User, Flag, Package, Layout, List as ListIcon, Search, ExternalLink } from 'lucide-react';
+import { Calendar, User, Flag, Package, Layout, List as ListIcon, Search, ExternalLink, Plus, AlertCircle } from 'lucide-react';
 
 const STATUS_COLORS: Record<string, string> = {
   BACKLOG: 'bg-slate-100 text-slate-600',
@@ -30,9 +30,13 @@ export default function RoadmapPage() {
   const [filterUser, setFilterUser] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
   const [showArchived, setShowArchived] = useState(false);
+  const [sortBy, setSortBy] = useState('PRODUCT');
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [importResult, setImportResult] = useState<any>(null);
 
   const load = () => {
     api.get('/roadmap').then((r) => setItems(r.data));
@@ -87,9 +91,15 @@ export default function RoadmapPage() {
     if (filterProduct !== 'ALL' && i.productId !== filterProduct) return false;
     if (filterUser !== 'ALL' && i.assigneeId?.toString() !== filterUser) return false;
     if (searchTerm && !i.title.toLowerCase().includes(searchTerm.toLowerCase()) && !i.identifier?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-    if (!showArchived && i.status === 'ARCHIVED') return false;
-    if (showArchived && i.status !== 'ARCHIVED') return false;
-    return true;
+    if (showArchived) return i.status === 'ARCHIVED';
+    return i.status !== 'ARCHIVED';
+  }).sort((a, b) => {
+    if (sortBy === 'PRODUCT') return (a.product?.name || '').localeCompare(b.product?.name || '') || a.title.localeCompare(b.title);
+    if (sortBy === 'DATE') return (a.plannedDate || '').localeCompare(b.plannedDate || '');
+    if (sortBy === 'STATUS') return a.status.localeCompare(b.status);
+    if (sortBy === 'TITLE') return a.title.localeCompare(b.title);
+    if (sortBy === 'EVOLUTION') return (b.completion || 0) - (a.completion || 0);
+    return 0;
   });
 
   const exportCSV = () => {
@@ -108,18 +118,86 @@ export default function RoadmapPage() {
 
     const content = [headers, ...rows].map(r => r.map(c => `"${c.toString().replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `roadmap_${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = url;
+    link.download = `delivery_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
     link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const downloadTemplate = () => {
+    const headers = ['ID', 'Produto', 'Título', 'Descrição', 'Responsável Email', 'Status', 'Esforço', 'Data Prevista', 'Conclusão', 'Risco', 'Confluence'];
+    const row = ['PRJ-001', 'Nome do Produto', 'Minha Atividade', 'Detalhes da atividade', 'user@company.com', 'BACKLOG', 'M', '2024-12-31', '0', 'Riscos aqui', 'https://confluence.com/link'];
+    const content = [headers, row].map(r => r.map(c => `"${c.toString().replace(/"/g, '""')}"`).join(',')).join('\n');
+    const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'modelo_importacao_delivery.csv';
+    document.body.appendChild(link);
+    link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
+  };
+
+  const handleImport = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImporting(true);
+    setImportResult(null);
+
+    const reader = new FileReader();
+    reader.onload = async (event) => {
+      const text = event.target?.result as string;
+      const lines = text.split('\n').filter(l => l.trim());
+      const headerLine = lines[0].split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(h => h.trim().replace(/^"|"$/g, ''));
+      
+      const items = lines.slice(1).map(line => {
+        const values = line.split(/,(?=(?:(?:[^"]*"){2})*[^"]*$)/).map(v => v.trim().replace(/^"|"$/g, ''));
+        const obj: any = {};
+        headerLine.forEach((h, i) => {
+          const val = values[i];
+          if (h === 'ID') obj.identifier = val;
+          if (h === 'Produto') obj.productName = val;
+          if (h === 'Título') obj.title = val;
+          if (h === 'Descrição') obj.description = val;
+          if (h === 'Responsável Email') obj.assigneeEmail = val;
+          if (h === 'Status') obj.status = val;
+          if (h === 'Esforço') obj.effort = val;
+          if (h === 'Data Prevista') obj.plannedDate = val;
+          if (h === 'Conclusão') obj.completion = val;
+          if (h === 'Risco') obj.riskPoint = val;
+          if (h === 'Confluence') obj.confluenceUrl = val;
+        });
+        return obj;
+      });
+
+      try {
+        const res = await api.post('/roadmap/import', { items });
+        setImportResult(res.data);
+        load();
+      } catch (err) {
+        alert('Erro ao importar arquivo');
+      } finally {
+        setImporting(false);
+      }
+    };
+    reader.readAsText(file);
   };
 
   return (
     <div className="space-y-4">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-2">
         <div>
-          <h1 className="text-xl font-bold text-slate-900 leading-tight">Roadmap Global</h1>
-          <p className="text-slate-500 text-[11px]">Visão consolidada de todas as atividades e evolução</p>
+          <h1 className="text-xl font-bold text-slate-900 leading-tight">Delivery Global</h1>
+          <p className="text-slate-500 text-[11px]">Visão consolidada de todas as entregas e prazos</p>
         </div>
 
         <div className="flex items-center gap-3">
@@ -128,6 +206,13 @@ export default function RoadmapPage() {
             className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50 transition-colors shadow-sm"
           >
             <ExternalLink size={14} /> Exportar CSV
+          </button>
+
+          <button 
+            onClick={() => setShowImport(true)}
+            className="flex items-center gap-2 px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-bold hover:bg-primary-700 transition-colors shadow-sm"
+          >
+            <Package size={14} /> Importar CSV
           </button>
 
           <div className="flex bg-slate-100 p-1 rounded-lg">
@@ -181,6 +266,18 @@ export default function RoadmapPage() {
           />
           <span className="text-sm font-medium text-slate-700">Ver Arquivados</span>
         </label>
+
+        <select 
+          className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary-500"
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+        >
+          <option value="PRODUCT">Ordenar por Produto</option>
+          <option value="DATE">Ordenar por Data</option>
+          <option value="TITLE">Ordenar por Título</option>
+          <option value="EVOLUTION">Ordenar por Evolução</option>
+          <option value="STATUS">Ordenar por Status</option>
+        </select>
 
         {editItem && (
           <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
@@ -244,8 +341,100 @@ export default function RoadmapPage() {
           </div>
         )}
 
+        {showImport && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-primary-600">
+                  <Package size={20} />
+                  <h2 className="font-bold text-slate-800">Importação de Entregas</h2>
+                </div>
+                <button onClick={() => { setShowImport(false); setImportResult(null); }} className="text-slate-400 hover:text-slate-600 text-2xl transition-colors">&times;</button>
+              </div>
+              
+              <div className="p-6 space-y-5">
+                {!importResult ? (
+                  <>
+                    <div className="bg-primary-50 border border-primary-100 rounded-xl p-4 space-y-3">
+                      <h3 className="text-sm font-bold text-primary-900 uppercase tracking-tight">Instruções de Importação</h3>
+                      <ul className="text-xs text-primary-800 space-y-2 list-disc pl-4 font-medium opacity-90">
+                        <li>Utilize os nomes exatos das colunas do modelo.</li>
+                        <li>A coluna <strong>Produto</strong> deve conter o nome exato cadastrado no sistema.</li>
+                        <li>O campo <strong>ID</strong> é opcional, mas se preenchido, será usado para <strong>deduplicação</strong>: se o ID já existir, a entrega será atualizada; caso contrário, será criada uma nova.</li>
+                        <li><strong>Status</strong> aceitos: BACKLOG, IN_PROGRESS, BLOCKED, DONE, ARCHIVED.</li>
+                        <li><strong>Esforço</strong> aceito: PP, P, M, G, GG.</li>
+                        <li>A coluna <strong>Responsável Email</strong> deve conter o e-mail do usuário cadastrado.</li>
+                      </ul>
+                      <button 
+                        onClick={downloadTemplate}
+                        className="flex items-center gap-2 px-3 py-2 bg-white border border-primary-200 text-primary-700 rounded-lg text-xs font-bold hover:bg-primary-50 transition-all shadow-sm group"
+                      >
+                        <ExternalLink size={14} className="group-hover:translate-y-[-1px] transition-transform" /> Baixar Modelo CSV
+                      </button>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700">Selecione o arquivo CSV</label>
+                      <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100/50 hover:border-primary-300 transition-all cursor-pointer relative">
+                        <input 
+                          type="file" 
+                          accept=".csv"
+                          onChange={handleImport}
+                          disabled={importing}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                        <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-primary-600 mb-3">
+                          <Plus size={24} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-600">{importing ? 'Processando arquivo...' : 'Arraste ou clique para selecionar seu CSV'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-widest">Máximo 5MB</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4 py-4">
+                    <div className="flex items-center gap-4 justify-center">
+                      <div className="text-center p-4 bg-green-50 rounded-2xl border border-green-100 min-w-[120px]">
+                        <p className="text-3xl font-black text-green-600">{importResult.created}</p>
+                        <p className="text-[10px] text-green-700 font-bold uppercase tracking-widest">Criados</p>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-2xl border border-blue-100 min-w-[120px]">
+                        <p className="text-3xl font-black text-blue-600">{importResult.updated}</p>
+                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest">Atualizados</p>
+                      </div>
+                    </div>
+                    
+                    {importResult.errors.length > 0 && (
+                      <div className="max-h-[200px] overflow-y-auto border border-red-100 rounded-xl bg-red-50/30 p-4">
+                        <h4 className="text-xs font-bold text-red-600 uppercase mb-3 flex items-center gap-2">
+                          <AlertCircle size={14} /> Erros encontrados ({importResult.errors.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {importResult.errors.map((err: any, idx: number) => (
+                            <div key={idx} className="text-[11px] text-red-700 border-b border-red-100 pb-1 flex justify-between gap-4">
+                              <span className="font-bold flex-1">{err.item}</span>
+                              <span className="opacity-70">{err.error}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={() => { setShowImport(false); setImportResult(null); }}
+                      className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg mt-4"
+                    >
+                      Concluir
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest ml-auto">
-          {filtered.length} Atividades
+          {filtered.length} Entregas
         </div>
       </div>
 
@@ -308,6 +497,14 @@ export default function RoadmapPage() {
                         </div>
                         {item.confluenceUrl && <ExternalLink size={10} className="text-slate-300 group-hover:text-primary-500" />}
                       </div>
+
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); updateStatus(item.id, item.status === 'ARCHIVED' ? 'DONE' : 'ARCHIVED'); }}
+                        className="absolute bottom-2 right-8 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-slate-50 border border-slate-200 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                        title={item.status === 'ARCHIVED' ? 'Restaurar' : 'Arquivar'}
+                      >
+                        <Package size={12} />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -325,6 +522,7 @@ export default function RoadmapPage() {
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Usuário</th>
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data Prevista</th>
+                <th className="w-10"></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -369,6 +567,15 @@ export default function RoadmapPage() {
                       <span>{item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR') : '—'}</span>
                     </div>
                   </td>
+                  <td className="px-3 py-1.5">
+                    <button 
+                      onClick={() => updateStatus(item.id, item.status === 'ARCHIVED' ? 'DONE' : 'ARCHIVED')}
+                      className="p-1.5 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors"
+                      title={item.status === 'ARCHIVED' ? 'Restaurar' : 'Arquivar'}
+                    >
+                      <Package size={14} />
+                    </button>
+                  </td>
                 </tr>
               ))}
             </tbody>
@@ -376,7 +583,7 @@ export default function RoadmapPage() {
           {filtered.length === 0 && (
             <div className="text-center py-20 bg-slate-50/50">
               <Search size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-400 text-sm font-medium">Nenhuma atividade encontrada com os filtros atuais</p>
+              <p className="text-slate-400 text-sm font-medium">Nenhuma entrega encontrada com os filtros atuais</p>
             </div>
           )}
         </div>

@@ -66,7 +66,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
   };
 
   const remove = async (id: string) => {
-    if (!confirm('Excluir atividade?')) return;
+    if (!confirm('Excluir entrega?')) return;
     await api.delete(`/roadmap/${id}`); load();
   };
 
@@ -90,10 +90,16 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
 
     const content = [headers, ...rows].map(r => r.map(c => `"${c.toString().replace(/"/g, '""')}"`).join(',')).join('\n');
     const blob = new Blob([`\uFEFF${content}`], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `roadmap_${product.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    link.href = url;
+    link.download = `delivery_${product.name.replace(/\s+/g, '_')}_${new Date().toISOString().split('T')[0]}.csv`;
+    document.body.appendChild(link);
     link.click();
+    setTimeout(() => {
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }, 100);
   };
 
   const filtered = items.filter(item => {
@@ -107,7 +113,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
     <div className="space-y-1.5">
       <div className="flex items-center justify-between flex-wrap gap-2">
         <div>
-          <h3 className="text-slate-800 text-sm font-semibold">Evolução do Produto</h3>
+          <h3 className="text-slate-800 text-sm font-semibold">Delivery do Produto</h3>
         </div>
         
         <div className="flex items-center gap-2">
@@ -141,7 +147,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
           </button>
 
           <button onClick={openNew} className="bg-primary-600 text-white rounded-lg px-2 py-1 flex items-center gap-1 text-[10px] font-bold">
-            <Plus size={14} /> Nova Atividade
+            <Plus size={14} /> Nova Entrega
           </button>
         </div>
       </div>
@@ -149,7 +155,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
       {showForm && (
         <div className="bg-white rounded-xl border border-primary-200 p-3 shadow-md space-y-2">
           <div className="flex items-center justify-between">
-            <h4 className="text-slate-800 text-sm font-bold">{editItem ? 'Editar Atividade' : 'Nova Atividade'}</h4>
+            <h4 className="text-slate-800 text-sm font-bold">{editItem ? 'Editar Entrega' : 'Nova Entrega'}</h4>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
             <div>
@@ -158,7 +164,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
             </div>
             <div className="md:col-span-3">
               <label>Título *</label>
-              <input className={input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome curto da atividade" />
+              <input className={input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome curto da entrega" />
             </div>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
@@ -209,7 +215,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
           <div className="flex justify-end gap-2 pt-1">
             <button onClick={() => setShowForm(false)} className="border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
             <button onClick={save} disabled={!form.title || saving} className="bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
-              {saving ? 'Gravando...' : 'Salvar Atividade'}
+              {saving ? 'Gravando...' : 'Salvar Entrega'}
             </button>
           </div>
         </div>
@@ -288,7 +294,7 @@ function ListView({ filtered, openEdit, remove, updateStatus }: any) {
           ))}
         </tbody>
       </table>
-      {filtered.length === 0 && <div className="text-center py-12 text-slate-400">Nenhuma atividade encontrada</div>}
+      {filtered.length === 0 && <div className="text-center py-12 text-slate-400">Nenhuma entrega encontrada</div>}
     </div>
   );
 }
@@ -349,7 +355,7 @@ function KanbanView({ items, showArchived, openEdit, updateStatus }: any) {
                   </div>
                 </div>
               ))}
-              {columnItems.length === 0 && <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-lg text-slate-300 text-[10px] font-bold uppercase tracking-widest">Coluna Vazia</div>}
+              {columnItems.length === 0 && <div className="text-center py-10 border-2 border-dashed border-slate-200 rounded-lg text-slate-300 text-[10px] font-bold uppercase tracking-widest">Sem Entregas</div>}
             </div>
           </div>
         );
@@ -381,7 +387,7 @@ function TimelineView({ items, users, showArchived }: any) {
                 </div>
                 <div>
                   <p className="font-bold text-slate-900 text-sm leading-none">{u.name}</p>
-                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-1">{userTasks.length} Atividades</p>
+                  <p className="text-[10px] text-slate-400 font-bold uppercase tracking-tight mt-1">{userTasks.length} Entregas</p>
                 </div>
               </div>
 

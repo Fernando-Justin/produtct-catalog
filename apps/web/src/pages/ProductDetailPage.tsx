@@ -17,7 +17,7 @@ const TABS = [
   { id: 'devs', label: 'Devs' },
   { id: 'clients', label: 'Clientes' },
   { id: 'environments', label: 'Ambiente' },
-  { id: 'roadmap', label: 'Roadmap' },
+  { id: 'roadmap', label: 'Delivery' },
 ];
 
 const STATUS_COLORS: Record<string, string> = {
