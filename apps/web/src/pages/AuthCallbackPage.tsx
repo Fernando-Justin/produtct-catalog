@@ -16,7 +16,7 @@ export default function AuthCallbackPage() {
       setAuthData(token, res.data);
       navigate('/dashboard');
     }).catch(() => navigate('/login'));
-  }, []);
+  }, [params, setAuthData, navigate]);
 
   return (
     <div className="flex items-center justify-center h-screen bg-slate-50">

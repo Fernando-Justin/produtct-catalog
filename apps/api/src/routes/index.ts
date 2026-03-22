@@ -4,8 +4,10 @@ import passport from '../config/passport';
 import { authController } from '../controllers/auth.controller';
 import {
   productController, squadController, userController,
-  roleController, roadmapController, dashboardController
+  roleController, roadmapController, dashboardController,
+  projectController
 } from '../controllers/product.controller';
+
 import { authMiddleware, AuthRequest } from '../middlewares/auth.middleware';
 import { prisma } from '../config/database';
 import { env } from '../config/env';
@@ -114,6 +116,14 @@ router.put('/products/:productId/databases/:envName', auth, asAuth(async (req: A
   });
   res.json(data);
 }));
+
+// ─── PROJETOS ───────────────────────────────────────
+router.get('/projetos', auth, asAuth(projectController.list));
+router.get('/projetos/:id', auth, asAuth(projectController.get));
+router.post('/projetos', auth, asAuth(projectController.create));
+router.put('/projetos/:id', auth, asAuth(projectController.update));
+router.delete('/projetos/:id', auth, asAuth(projectController.delete));
+
 
 router.post('/products/:productId/links', auth, asAuth(async (req: AuthRequest, res: Response) => {
   const link = await prisma.productLink.create({ data: { productId: req.params.productId, ...req.body } });

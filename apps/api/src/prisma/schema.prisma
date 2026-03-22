@@ -58,6 +58,7 @@ model User {
 
   productDevs    ProductDev[]
   roadmapItems   RoadmapItem[]
+  projects       Project[]
 
   @@map("users")
 }
@@ -343,6 +344,33 @@ model ClientSuggestion {
   @@map("client_suggestions")
 }
 
+enum ProjectStatus {
+  PLANEJADO
+  EM_ANDAMENTO
+  PAUSADO
+  FINALIZADO
+}
+
+model Project {
+  id                      String        @id @default(cuid())
+  name                    String
+  description             String?
+  status                  ProjectStatus @default(PLANEJADO)
+  startDate               DateTime
+  forecastDate            DateTime
+  finishDate              DateTime?
+  documentationLink       String?
+  poId                    Int
+  po                      User          @relation(fields: [poId], references: [id])
+  riskPoint               String?       @db.Text
+  createdAt               DateTime      @default(now())
+  updatedAt               DateTime      @updatedAt
+
+  roadmapItems RoadmapItem[]
+
+  @@map("projects")
+}
+
 // ─────────────────────────────────────────
 // ROADMAP E ATIVIDADES
 // ─────────────────────────────────────────
@@ -364,24 +392,29 @@ enum EffortLevel {
 }
 
 model RoadmapItem {
-  id            String         @id @default(cuid())
-  productId     String
-  product       Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
-  title         String
-  description   String?
-  goalIndicator String?
-  plannedDate   DateTime?
-  effort        EffortLevel    @default(M)
-  status        ActivityStatus @default(BACKLOG)
-  assigneeId    Int?
-  assignee      User?          @relation(fields: [assigneeId], references: [id])
-  confluenceUrl String?
-  identifier    String?
-  order         Int            @default(0)
-  completion    Int            @default(0)
-  riskPoint     String?        @db.Text
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
+  id                    String         @id @default(cuid())
+  productId             String
+  product               Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  projectId             String?
+  project               Project?       @relation(fields: [projectId], references: [id])
+  title                 String
+  description           String?
+  goalIndicator         String?
+  plannedDate           DateTime?
+  startDateAtividade    DateTime?
+  finishDateAtividade   DateTime?
+  effort                EffortLevel    @default(M)
+  status                ActivityStatus @default(BACKLOG)
+  assigneeId            Int?
+  assignee              User?          @relation(fields: [assigneeId], references: [id])
+  confluenceUrl         String?
+  identifier            String?
+  order                 Int            @default(0)
+  completion            Int            @default(0)
+  riskPoint             String?        @db.Text
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
 
   @@map("roadmap_items")
 }
+

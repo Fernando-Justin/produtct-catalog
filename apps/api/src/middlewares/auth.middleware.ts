@@ -3,7 +3,7 @@ import jwt from 'jsonwebtoken';
 import { env } from '../config/env';
 
 export interface AuthRequest extends Request {
-  user: { id: number; email: string; name: string } | any;
+  user: { id: number; email: string; name: string };
 }
 
 export const authMiddleware = (req: AuthRequest, res: Response, next: NextFunction): void => {

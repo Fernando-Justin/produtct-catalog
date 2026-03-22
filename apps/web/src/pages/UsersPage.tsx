@@ -3,7 +3,6 @@ import { api } from '../lib/api';
 import { User, Plus, Edit2, Trash2, Check, AlertCircle } from 'lucide-react';
 
 const input = 'w-full';
-const label = '';
 
 interface Toast { msg: string; type: 'ok' | 'err' }
 

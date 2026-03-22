@@ -223,7 +223,7 @@ export const roadmapController = {
     try {
       const items = await prisma.roadmapItem.findMany({
         where: { productId: req.params.productId },
-        include: { assignee: true },
+        include: { assignee: true, project: true },
         orderBy: { order: 'asc' },
       });
       res.json(items);
@@ -231,10 +231,17 @@ export const roadmapController = {
       res.status(500).json({ error: 'Erro ao listar roadmap', detail: e.message });
     }
   },
-  listAll: async (_req: AuthRequest, res: Response) => {
+  listAll: async (req: AuthRequest, res: Response) => {
     try {
+      const { projectId, status, assigneeId } = req.query;
+      const where: any = {};
+      if (projectId && projectId !== 'ALL') where.projectId = projectId;
+      if (status && status !== 'ALL') where.status = status;
+      if (assigneeId && assigneeId !== 'ALL') where.assigneeId = parseInt(assigneeId as string);
+
       const items = await prisma.roadmapItem.findMany({
-        include: { assignee: true, product: true },
+        where,
+        include: { assignee: true, product: true, project: true },
         orderBy: [
           { product: { name: 'asc' } },
           { title: 'asc' }
@@ -250,9 +257,16 @@ export const roadmapController = {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
       if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
+      if (data.startDateAtividade) data.startDateAtividade = new Date(data.startDateAtividade);
+      if (data.finishDateAtividade) data.finishDateAtividade = new Date(data.finishDateAtividade);
       if (data.completion !== undefined) data.completion = parseInt(data.completion);
+
+      // Business Rule: Set finishDateAtividade if DONE and not provided
+      if (data.status === 'DONE' && !data.finishDateAtividade) {
+        data.finishDateAtividade = new Date();
+      }
       
-      const item = await prisma.roadmapItem.create({ data, include: { assignee: true } });
+      const item = await prisma.roadmapItem.create({ data, include: { assignee: true, project: true } });
       res.status(201).json(item);
     } catch (e: any) {
       res.status(500).json({ error: 'Erro ao criar item do roadmap', detail: e.message });
@@ -263,9 +277,16 @@ export const roadmapController = {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
       if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
+      if (data.startDateAtividade) data.startDateAtividade = new Date(data.startDateAtividade);
+      if (data.finishDateAtividade) data.finishDateAtividade = new Date(data.finishDateAtividade);
       if (data.completion !== undefined) data.completion = parseInt(data.completion);
+
+      // Business Rule: Set finishDateAtividade if DONE and not provided
+      if (data.status === 'DONE' && !data.finishDateAtividade) {
+        data.finishDateAtividade = new Date();
+      }
       
-      const item = await prisma.roadmapItem.update({ where: { id: req.params.id }, data, include: { assignee: true } });
+      const item = await prisma.roadmapItem.update({ where: { id: req.params.id }, data, include: { assignee: true, project: true } });
       res.json(item);
     } catch (e: any) {
       if (e.code === 'P2025') return res.status(404).json({ error: 'Item não encontrado' });
@@ -299,6 +320,14 @@ export const roadmapController = {
             if (user) assigneeId = user.id;
           }
 
+          let projectId: string | null = null;
+          if (item.projectName) {
+            const project = await prisma.project.findFirst({
+              where: { name: { equals: item.projectName, mode: 'insensitive' } }
+            });
+            if (project) projectId = project.id;
+          }
+
           const data: any = {
             title: item.title,
             description: item.description || null,
@@ -310,6 +339,7 @@ export const roadmapController = {
             identifier: item.identifier || null,
             confluenceUrl: item.confluenceUrl || null,
             productId: product.id,
+            projectId,
             assigneeId,
           };
 
@@ -334,6 +364,139 @@ export const roadmapController = {
     }
   },
 };
+
+// ─── PROJECTS ───────────────────────────────────────
+
+export const projectController = {
+  list: async (req: AuthRequest, res: Response) => {
+    try {
+      const { status } = req.query;
+      const where: any = {};
+      if (status && status !== 'ALL') where.status = status;
+
+      const projects = await prisma.project.findMany({
+        where,
+        include: {
+          po: true,
+          roadmapItems: {
+            select: { status: true }
+          }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      const projectsWithCompletion = projects.map((p: any) => {
+        const total = p.roadmapItems.length;
+        const done = p.roadmapItems.filter((i: any) => i.status === 'DONE').length;
+        const completion = total > 0 ? Math.round((done / total) * 100) : 0;
+        
+        const { roadmapItems, ...projData } = p;
+        return { ...projData, completion };
+      });
+
+
+      res.json(projectsWithCompletion);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao listar projetos', detail: e.message });
+    }
+  },
+
+  get: async (req: AuthRequest, res: Response) => {
+    try {
+      const project = await prisma.project.findUnique({
+        where: { id: req.params.id },
+        include: {
+          po: true,
+          roadmapItems: {
+            include: { assignee: true, product: true },
+            orderBy: { createdAt: 'desc' }
+          }
+        }
+      });
+
+      if (!project) return res.status(404).json({ error: 'Projeto não encontrado' });
+
+      const total = project.roadmapItems.length;
+      const done = project.roadmapItems.filter((i: any) => i.status === 'DONE').length;
+      const completion = total > 0 ? Math.round((done / total) * 100) : 0;
+
+
+      res.json({ ...project, completion });
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao buscar projeto', detail: e.message });
+    }
+  },
+
+  create: async (req: AuthRequest, res: Response) => {
+    try {
+      const data = { ...req.body };
+      if (data.poId) data.poId = parseInt(data.poId);
+      if (data.startDate) data.startDate = new Date(data.startDate);
+      if (data.forecastDate) data.forecastDate = new Date(data.forecastDate);
+      if (data.finishDate) data.finishDate = new Date(data.finishDate);
+
+      // Business Rule: finishDate logically tied to status FINALIZADO
+      if (data.status === 'FINALIZADO' && !data.finishDate) {
+        data.finishDate = new Date();
+      }
+
+      const project = await prisma.project.create({ data, include: { po: true } });
+      res.status(201).json(project);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao criar projeto', detail: e.message });
+    }
+  },
+
+  update: async (req: AuthRequest, res: Response) => {
+    try {
+      const { 
+        id, createdAt, updatedAt, 
+        po, roadmapItems, completion, ...rest 
+      } = req.body;
+      
+      const data = { ...rest };
+      if (data.poId) data.poId = parseInt(data.poId);
+      if (data.startDate) data.startDate = new Date(data.startDate);
+      if (data.forecastDate) data.forecastDate = new Date(data.forecastDate);
+      if (data.finishDate) data.finishDate = new Date(data.finishDate);
+
+      // Business Rule: finishDate logically tied to status FINALIZADO
+      if (data.status === 'FINALIZADO' && !data.finishDate) {
+        data.finishDate = new Date();
+      } else if (data.status && data.status !== 'FINALIZADO') {
+        data.finishDate = null;
+      }
+
+
+      const project = await prisma.project.update({ 
+        where: { id: req.params.id }, 
+        data,
+        include: { po: true }
+      });
+      res.json(project);
+    } catch (e: any) {
+      if (e.code === 'P2025') return res.status(404).json({ error: 'Projeto não encontrado' });
+      res.status(500).json({ error: 'Erro ao atualizar projeto', detail: e.message });
+    }
+  },
+
+  delete: async (req: AuthRequest, res: Response) => {
+    try {
+      // Check for attached activities
+      const count = await prisma.roadmapItem.count({ where: { projectId: req.params.id } });
+      if (count > 0) {
+        return res.status(409).json({ error: 'Não é possível excluir o projeto pois existem atividades vinculadas a ele.' });
+      }
+
+      await prisma.project.delete({ where: { id: req.params.id } });
+      res.status(204).send();
+    } catch (e: any) {
+      if (e.code === 'P2025') return res.status(404).json({ error: 'Projeto não encontrado' });
+      res.status(500).json({ error: 'Erro ao deletar projeto', detail: e.message });
+    }
+  },
+};
+
 
 // ─── DASHBOARD ──────────────────────────────────────
 

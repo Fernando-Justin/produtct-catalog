@@ -1,18 +1,21 @@
 import { NavLink } from 'react-router-dom';
 import {
   LayoutDashboard, Package, GitBranch, Users, Shield,
-  Boxes, ChevronRight
+  Boxes, ChevronRight, FolderKanban
 } from 'lucide-react';
+
 import { cn } from '../../lib/utils';
 
 const nav = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { to: '/projetos', icon: FolderKanban, label: 'Projetos' },
   { to: '/products', icon: Package, label: 'Produtos' },
   { to: '/delivery', icon: GitBranch, label: 'Delivery' },
   { to: '/squads', icon: Boxes, label: 'Squads' },
   { to: '/users', icon: Users, label: 'Usuários' },
   { to: '/roles', icon: Shield, label: 'Cargos' },
 ];
+
 
 export default function Sidebar() {
   return (

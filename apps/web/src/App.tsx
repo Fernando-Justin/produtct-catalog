@@ -11,8 +11,10 @@ import RoadmapPage from './pages/RoadmapPage';
 import SquadsPage from './pages/SquadsPage';
 import UsersPage from './pages/UsersPage';
 import RolesPage from './pages/RolesPage';
+import ProjectsPage from './pages/ProjectsPage';
 
 export default function App() {
+
   return (
     <AuthProvider>
       <BrowserRouter>
@@ -29,7 +31,9 @@ export default function App() {
           >
             <Route index element={<Navigate to="/dashboard" replace />} />
             <Route path="dashboard" element={<DashboardPage />} />
+            <Route path="projetos" element={<ProjectsPage />} />
             <Route path="products" element={<ProductsPage />} />
+
             <Route path="products/:id" element={<ProductDetailPage />} />
             <Route path="delivery" element={<RoadmapPage />} />
             <Route path="squads" element={<SquadsPage />} />
