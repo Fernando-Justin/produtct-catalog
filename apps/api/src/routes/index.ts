@@ -16,6 +16,11 @@ const router = Router();
 
 const auth = authMiddleware as any;
 
+// ─── HEALTH CHECK ────────────────────────────────────
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
 // Utilitário para garantir tipagem correta nas rotas autenticadas
 const asAuth = (fn: (req: AuthRequest, res: Response, next: NextFunction) => any): RequestHandler => fn as any;
 

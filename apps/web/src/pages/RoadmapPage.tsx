@@ -21,6 +21,8 @@ const EFFORT_COLORS: Record<string, string> = {
   M: 'bg-amber-50 text-amber-600', G: 'bg-orange-100 text-orange-600', GG: 'bg-red-100 text-red-600',
 };
 
+const EFFORT_LABELS: Record<string, string> = { PP: 'PP', P: 'P', M: 'M', G: 'G', GG: 'GG' };
+
 const USER_COLORS = [
   'bg-blue-500',   // #3B82F6
   'bg-emerald-500', // #10B981
@@ -414,7 +416,7 @@ export default function RoadmapPage() {
               <h2 className="font-bold text-slate-800 uppercase tracking-tight">Editar Atividade</h2>
               <button onClick={() => setEditItem(null)} className="text-slate-400 hover:text-slate-600 text-lg transition-colors">&times;</button>
             </div>
-            <div className="p-4 space-y-4 max-h-[80vh] overflow-y-auto">
+            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
               <div className="grid grid-cols-4 gap-3">
                  <div className="col-span-1">
                     <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">ID</label>
@@ -439,19 +441,21 @@ export default function RoadmapPage() {
                     <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.plannedDate} onChange={(e) => setForm({...form, plannedDate: e.target.value})} />
                  </div>
               </div>
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                  <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">% Evolução</label>
                     <input type="number" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.completion} onChange={(e) => setForm({...form, completion: parseInt(e.target.value) || 0})} />
                  </div>
                  <div>
+                    <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Esforço</label>
+                    <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.effort} onChange={(e) => setForm({...form, effort: e.target.value})}>
+                      {Object.entries(EFFORT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                    </select>
+                 </div>
+                 <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Conclusão Real</label>
                     <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold opacity-60" value={form.finishDateAtividade} onChange={(e) => setForm({...form, finishDateAtividade: e.target.value})} />
                  </div>
-              </div>
-              <div>
-                 <label className="block text-[10px] font-black text-red-500 uppercase mb-1 tracking-widest">Ponto de Risco</label>
-                 <textarea className="w-full text-sm p-2 border border-red-100 bg-red-50/50 rounded-lg text-red-700 min-h-[60px]" value={form.riskPoint} onChange={(e) => setForm({...form, riskPoint: e.target.value})} />
               </div>
               <div className="grid grid-cols-2 gap-3">
                  <div>
@@ -468,7 +472,6 @@ export default function RoadmapPage() {
                     </select>
                  </div>
               </div>
-
               <div className="grid grid-cols-2 gap-3">
                  <div>
                     <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Projeto</label>
@@ -484,6 +487,12 @@ export default function RoadmapPage() {
                     </select>
                  </div>
               </div>
+            </div>
+            <div className="p-4 bg-red-50/50 border-t border-red-100">
+              <label className="block text-[10px] font-black text-red-500 uppercase mb-1 tracking-widest flex items-center gap-1">
+                <Flag size={10} /> Ponto de Risco
+              </label>
+              <textarea className="w-full text-sm p-2 border border-red-200 bg-white rounded-lg text-red-700 min-h-[60px] placeholder-red-300" value={form.riskPoint} onChange={(e) => setForm({...form, riskPoint: e.target.value})} placeholder="Descreva possíveis riscos..." />
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
                <button onClick={() => setEditItem(null)} className="px-4 py-2 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancelar</button>
@@ -777,71 +786,110 @@ export default function RoadmapPage() {
               <h2 className="font-bold text-slate-800 uppercase tracking-tight">Nova Atividade</h2>
               <button onClick={() => setShowModal(false)} className="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
             </div>
-            <div className="p-4 space-y-4">
+            <div className="p-4 space-y-3 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-4 gap-3">
+                <div className="col-span-1">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">ID</label>
+                  <input className="w-full text-xs p-2 border border-slate-200 rounded-lg font-bold bg-slate-50 focus:ring-1 focus:ring-primary-500 outline-none" value={form.identifier || ''} onChange={(e) => setForm({...form, identifier: e.target.value})} placeholder="PROJ-001" />
+                </div>
+                <div className="col-span-3">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Título *</label>
+                  <input className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold focus:ring-1 focus:ring-primary-500 outline-none" value={form.title || ''} onChange={(e) => setForm({...form, title: e.target.value})} placeholder="Título da atividade" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Detalhamento</label>
+                <textarea className="w-full text-sm p-2 border border-slate-200 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none" rows={2} value={form.description || ''} onChange={(e) => setForm({...form, description: e.target.value})} placeholder="Descrição da atividade..." />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
                 <div>
-                   <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Produto</label>
-                   <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.productId} onChange={(e) => setForm({...form, productId: e.target.value})}>
-                     <option value="">Selecione o Produto</option>
-                     {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                   </select>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Produto *</label>
+                  <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.productId || ''} onChange={(e) => setForm({...form, productId: e.target.value})}>
+                    <option value="">Selecione o Produto</option>
+                    {products.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 </div>
                 <div>
-                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 tracking-widest">Título</label>
-                  <input className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} placeholder="Título da entrega..." />
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Projeto</label>
+                  <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.projectId || ''} onChange={(e) => setForm({...form, projectId: e.target.value})}>
+                    <option value="">Sem Projeto</option>
+                    {projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                   <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Início</label>
-                      <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.startDateAtividade} onChange={(e) => setForm({...form, startDateAtividade: e.target.value})} />
-                   </div>
-                   <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Prevista</label>
-                      <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.plannedDate} onChange={(e) => setForm({...form, plannedDate: e.target.value})} />
-                   </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Início</label>
+                  <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.startDateAtividade || ''} onChange={(e) => setForm({...form, startDateAtividade: e.target.value})} />
                 </div>
-                <div className="grid grid-cols-2 gap-3">
-                   <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Esforço</label>
-                      <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.effort} onChange={(e) => setForm({...form, effort: e.target.value})}>
-                        <option value="PP">PP</option>
-                        <option value="P">P</option>
-                        <option value="M">M</option>
-                        <option value="G">G</option>
-                        <option value="GG">GG</option>
-                      </select>
-                   </div>
-                   <div>
-                      <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Responsável</label>
-                      <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.assigneeId} onChange={(e) => setForm({...form, assigneeId: e.target.value})}>
-                        <option value="">Ninguém</option>
-                        {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                      </select>
-                   </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Data Prevista (Fim)</label>
+                  <input type="date" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.plannedDate || ''} onChange={(e) => setForm({...form, plannedDate: e.target.value})} />
                 </div>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">% Evolução</label>
+                  <input type="number" className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.completion || 0} onChange={(e) => setForm({...form, completion: parseInt(e.target.value) || 0})} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Esforço</label>
+                  <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.effort || 'M'} onChange={(e) => setForm({...form, effort: e.target.value})}>
+                    {Object.entries(EFFORT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Responsável</label>
+                  <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold" value={form.assigneeId || ''} onChange={(e) => setForm({...form, assigneeId: e.target.value})}>
+                    <option value="">Ninguém</option>
+                    {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Status</label>
+                  <select className="w-full text-sm p-2 border border-slate-200 rounded-lg font-bold text-primary-600" value={form.status || 'BACKLOG'} onChange={(e) => setForm({...form, status: e.target.value})}>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-1">Documentação</label>
+                  <input className="w-full text-sm p-2 border border-slate-200 rounded-lg" value={form.confluenceUrl || ''} onChange={(e) => setForm({...form, confluenceUrl: e.target.value})} placeholder="https://..." />
+                </div>
+              </div>
+            </div>
+            <div className="p-4 bg-red-50/50 border-t border-red-100">
+              <label className="block text-[10px] font-black text-red-500 uppercase mb-1 tracking-widest flex items-center gap-1">
+                <Flag size={10} /> Ponto de Risco
+              </label>
+              <textarea className="w-full text-sm p-2 border border-red-200 bg-white rounded-lg text-red-700 min-h-[60px] placeholder-red-300" value={form.riskPoint || ''} onChange={(e) => setForm({...form, riskPoint: e.target.value})} placeholder="Descreva possíveis riscos..." />
             </div>
             <div className="p-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
-               <button onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-black text-slate-400 uppercase tracking-widest">Cancelar</button>
-               <button 
-                  onClick={async () => {
-                    setSaving(true);
-                    try {
-                      await api.post('/roadmap', {
-                        ...form,
-                        assigneeId: form.assigneeId ? parseInt(form.assigneeId) : null,
-                        plannedDate: form.plannedDate ? new Date(form.plannedDate).toISOString() : null,
-                        startDateAtividade: form.startDateAtividade ? new Date(form.startDateAtividade).toISOString() : null,
-                      });
-                      setShowModal(false);
-                      load();
-                    } finally {
-                      setSaving(false);
-                    }
-                  }} 
-                  disabled={saving || !form.productId || !form.title} 
-                  className="px-6 py-2 bg-primary-600 text-white text-xs font-black rounded-lg shadow-lg shadow-primary-200 disabled:opacity-50"
-               >
-                 {saving ? 'CRIANDO...' : 'CRIAR ENTREGA'}
-               </button>
+              <button onClick={() => setShowModal(false)} className="px-4 py-2 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancelar</button>
+              <button
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await api.post('/roadmap', {
+                      ...form,
+                      assigneeId: form.assigneeId ? parseInt(form.assigneeId) : null,
+                      plannedDate: form.plannedDate ? new Date(form.plannedDate).toISOString() : null,
+                      startDateAtividade: form.startDateAtividade ? new Date(form.startDateAtividade).toISOString() : null,
+                      projectId: form.projectId || null,
+                    });
+                    setShowModal(false);
+                    setForm({ status: 'BACKLOG', effort: 'M' });
+                    load();
+                  } finally {
+                    setSaving(false);
+                  }
+                }}
+                disabled={saving || !form.productId || !form.title}
+                className="px-6 py-2 bg-primary-600 text-white text-xs font-black rounded-lg shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all disabled:opacity-50"
+              >
+                {saving ? 'CRIANDO...' : 'CRIAR ATIVIDADE'}
+              </button>
             </div>
           </div>
         </div>

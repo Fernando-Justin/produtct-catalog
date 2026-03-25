@@ -1,7 +1,19 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { Plus, Search, FolderKanban, ChevronRight, Calendar, User, Flag, AlertCircle } from 'lucide-react';
+import { Plus, Search, FolderKanban, ChevronRight, Calendar, User, Flag, AlertCircle, ListTodo, X, Loader2 } from 'lucide-react';
 import ProjectFormModal from '../components/Projects/ProjectFormModal';
+
+const ACTIVITY_STATUS_COLORS: Record<string, string> = {
+  BACKLOG: 'bg-slate-100 text-slate-600',
+  IN_PROGRESS: 'bg-blue-100 text-blue-700',
+  BLOCKED: 'bg-red-100 text-red-700',
+  DONE: 'bg-green-100 text-green-700',
+  ARCHIVED: 'bg-slate-200 text-slate-500',
+};
+
+const ACTIVITY_STATUS_LABELS: Record<string, string> = {
+  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído', ARCHIVED: 'Arquivado',
+};
 
 interface Project {
   id: string;
@@ -40,6 +52,9 @@ export default function ProjectsPage() {
   const [showModal, setShowModal] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | undefined>();
   const [loading, setLoading] = useState(true);
+  const [activitiesProject, setActivitiesProject] = useState<Project | null>(null);
+  const [activities, setActivities] = useState<any[]>([]);
+  const [loadingActivities, setLoadingActivities] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -66,6 +81,20 @@ export default function ProjectsPage() {
   const handleCreate = () => {
     setEditingProject(undefined);
     setShowModal(true);
+  };
+
+  const openActivities = async (e: React.MouseEvent, project: Project) => {
+    e.stopPropagation();
+    setActivitiesProject(project);
+    setLoadingActivities(true);
+    try {
+      const res = await api.get('/roadmap', { params: { projectId: project.id } });
+      setActivities(res.data);
+    } catch {
+      setActivities([]);
+    } finally {
+      setLoadingActivities(false);
+    }
   };
 
   return (
@@ -180,7 +209,17 @@ export default function ProjectsPage() {
                     <span className="text-slate-600">{new Date(p.forecastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
                   </div>
                 </div>
-                <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={(e) => openActivities(e, p)}
+                    className="flex items-center gap-1 px-2 py-1 bg-primary-50 text-primary-600 rounded-md hover:bg-primary-100 transition-all text-[9px] font-black uppercase tracking-tight border border-primary-100 hover:border-primary-200 shadow-sm"
+                    title="Ver Atividades"
+                  >
+                    <ListTodo size={12} />
+                    Atividades
+                  </button>
+                  <ChevronRight size={16} className="text-slate-300 group-hover:text-primary-500 group-hover:translate-x-1 transition-all" />
+                </div>
               </div>
             </div>
           ))}
@@ -201,6 +240,92 @@ export default function ProjectsPage() {
           onClose={() => setShowModal(false)}
           onSaved={() => { setShowModal(false); load(); }}
         />
+      )}
+
+      {/* Popup de Atividades do Projeto */}
+      {activitiesProject && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4" onClick={() => setActivitiesProject(null)}>
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in duration-200" onClick={(e) => e.stopPropagation()}>
+            <div className="px-3 py-2.5 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <div className="flex items-center gap-2">
+                <div className="w-6 h-6 bg-primary-600 rounded-md flex items-center justify-center">
+                  <ListTodo size={14} className="text-white" />
+                </div>
+                <div>
+                  <h2 className="text-xs font-black text-slate-800 uppercase tracking-tight leading-none">{activitiesProject.name}</h2>
+                  <p className="text-[8px] text-slate-400 font-bold uppercase tracking-widest mt-0.5">Atividades do projeto</p>
+                </div>
+              </div>
+              <button onClick={() => setActivitiesProject(null)} className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-md">
+                <X size={16} />
+              </button>
+            </div>
+
+            <div className="max-h-[50vh] overflow-y-auto">
+              {loadingActivities ? (
+                <div className="flex items-center justify-center py-10">
+                  <Loader2 size={20} className="animate-spin text-primary-500" />
+                  <span className="ml-2 text-xs text-slate-400 font-bold">Carregando...</span>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-10">
+                  <ListTodo size={28} className="mx-auto text-slate-200 mb-2" />
+                  <p className="text-[10px] text-slate-400 font-bold">Nenhuma atividade vinculada</p>
+                </div>
+              ) : (
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-100">
+                      <th className="text-left px-3 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest">Título</th>
+                      <th className="text-left px-2 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest w-24">Responsável</th>
+                      <th className="text-left px-2 py-1.5 text-[8px] font-black text-slate-400 uppercase tracking-widest w-24">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-50">
+                    {activities.map((act: any) => (
+                      <tr key={act.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="px-3 py-1.5">
+                          <div className="flex flex-col">
+                            <span className="text-[10px] font-semibold text-slate-700 leading-tight line-clamp-1">{act.title}</span>
+                            {act.identifier && <span className="text-[8px] font-mono text-slate-400 mt-0.5">{act.identifier}</span>}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <div className="flex items-center gap-1">
+                            {act.assignee ? (
+                              <>
+                                <div className="w-4 h-4 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-[7px] shrink-0">
+                                  {act.assignee.name.charAt(0)}
+                                </div>
+                                <span className="text-[9px] text-slate-600 font-medium truncate">{act.assignee.name.split(' ')[0]}</span>
+                              </>
+                            ) : (
+                              <span className="text-[9px] text-slate-300 italic">—</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-2 py-1.5">
+                          <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold whitespace-nowrap ${ACTIVITY_STATUS_COLORS[act.status] || 'bg-slate-100 text-slate-500'}`}>
+                            {ACTIVITY_STATUS_LABELS[act.status] || act.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              )}
+            </div>
+
+            <div className="px-3 py-2 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest">
+                {activities.length} {activities.length === 1 ? 'atividade' : 'atividades'}
+              </span>
+              <button onClick={() => setActivitiesProject(null)} className="px-3 py-1 text-[10px] font-black text-slate-500 uppercase tracking-widest hover:text-slate-700 transition-colors">
+                Fechar
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

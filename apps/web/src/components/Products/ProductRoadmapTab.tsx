@@ -21,13 +21,14 @@ const EFFORT_COLORS: Record<string, string> = {
   M: 'bg-amber-50 text-amber-600', G: 'bg-orange-100 text-orange-600', GG: 'bg-red-100 text-red-600',
 };
 
-const emptyForm = { title: '', description: '', goalIndicator: '', plannedDate: '', effort: 'M', status: 'BACKLOG', assigneeId: '', identifier: '', confluenceUrl: '', completion: 0, riskPoint: '' };
+const emptyForm = { title: '', description: '', goalIndicator: '', startDateAtividade: '', plannedDate: '', effort: 'M', status: 'BACKLOG', assigneeId: '', identifier: '', confluenceUrl: '', completion: 0, riskPoint: '', projectId: '' };
 
 type ViewMode = 'LIST' | 'KANBAN' | 'TIMELINE';
 
 export default function ProductRoadmapTab({ product, onRefresh }: Props) {
   const [items, setItems] = useState<any[]>([]);
   const [users, setUsers] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [showForm, setShowForm] = useState(false);
   const [editItem, setEditItem] = useState<any>(null);
   const [form, setForm] = useState({ ...emptyForm });
@@ -37,15 +38,17 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
   const [showArchived, setShowArchived] = useState(false);
 
   const load = () => api.get(`/products/${product.id}/roadmap`).then((r) => setItems(r.data));
-  useEffect(() => { load(); api.get('/users').then((r) => setUsers(r.data)); }, [product.id]);
+  useEffect(() => { load(); api.get('/users').then((r) => setUsers(r.data)); api.get('/projetos').then((r) => setProjects(r.data)); }, [product.id]);
 
   const openNew = () => { setForm({ ...emptyForm }); setEditItem(null); setShowForm(true); };
   const openEdit = (item: any) => {
     setForm({
       title: item.title, description: item.description || '', goalIndicator: item.goalIndicator || '',
+      startDateAtividade: item.startDateAtividade ? item.startDateAtividade.slice(0, 10) : '',
       plannedDate: item.plannedDate ? item.plannedDate.slice(0, 10) : '', effort: item.effort,
       status: item.status, assigneeId: item.assigneeId || '', identifier: item.identifier || '',
       confluenceUrl: item.confluenceUrl || '', completion: item.completion || 0, riskPoint: item.riskPoint || '',
+      projectId: item.projectId || '',
     });
     setEditItem(item); setShowForm(true);
   };
@@ -53,11 +56,13 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
   const save = async () => {
     setSaving(true);
     try {
-      const payload = { 
-        ...form, 
-        productId: product.id, 
-        plannedDate: form.plannedDate ? new Date(form.plannedDate).toISOString() : null, 
-        assigneeId: form.assigneeId ? parseInt(form.assigneeId as string) : null 
+      const payload = {
+        ...form,
+        productId: product.id,
+        startDateAtividade: form.startDateAtividade ? new Date(form.startDateAtividade).toISOString() : null,
+        plannedDate: form.plannedDate ? new Date(form.plannedDate).toISOString() : null,
+        assigneeId: form.assigneeId ? parseInt(form.assigneeId as string) : null,
+        projectId: form.projectId || null,
       };
       if (editItem) await api.put(`/roadmap/${editItem.id}`, payload);
       else await api.post('/roadmap', payload);
@@ -153,70 +158,88 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
       </div>
 
       {showForm && (
-        <div className="bg-white rounded-xl border border-primary-200 p-3 shadow-md space-y-2">
-          <div className="flex items-center justify-between">
-            <h4 className="text-slate-800 text-sm font-bold">{editItem ? 'Editar Entrega' : 'Nova Entrega'}</h4>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <div>
-              <label>Identificador</label>
-              <input className={input} value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} placeholder="Ex: PROJ-001" />
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg overflow-hidden animate-in fade-in zoom-in duration-200">
+            <div className="p-3 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+              <h4 className="text-sm font-bold text-slate-800 uppercase tracking-tight">{editItem ? 'Editar Entrega' : 'Nova Entrega'}</h4>
+              <button onClick={() => setShowForm(false)} className="text-slate-400 hover:text-slate-600 text-lg transition-colors">&times;</button>
             </div>
-            <div className="md:col-span-3">
-              <label>Título *</label>
-              <input className={input} value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome curto da entrega" />
+            <div className="p-3 space-y-2 max-h-[70vh] overflow-y-auto">
+              <div className="grid grid-cols-4 gap-2">
+                <div>
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-0.5 tracking-widest">ID</label>
+                  <input className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold focus:ring-1 focus:ring-primary-500 outline-none" value={form.identifier} onChange={(e) => setForm({ ...form, identifier: e.target.value })} placeholder="PROJ-001" />
+                </div>
+                <div className="col-span-3">
+                  <label className="block text-[10px] font-black text-slate-400 uppercase mb-0.5 tracking-widest">Título *</label>
+                  <input className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold focus:ring-1 focus:ring-primary-500 outline-none" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome da entrega" />
+                </div>
+              </div>
+              <div>
+                <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Detalhamento</label>
+                <textarea className="w-full text-xs p-1.5 border border-slate-200 rounded-lg focus:ring-1 focus:ring-primary-500 outline-none" rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Requisitos..." />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Projeto</label>
+                  <select className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.projectId} onChange={(e) => setForm({ ...form, projectId: e.target.value })}>
+                    <option value="">Sem Projeto</option>
+                    {projects.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Responsável</label>
+                  <select className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
+                    <option value="">Ninguém</option>
+                    {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Data Início</label>
+                  <input type="date" className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.startDateAtividade} onChange={(e) => setForm({ ...form, startDateAtividade: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Data Prevista</label>
+                  <input type="date" className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} />
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">% Concluído</label>
+                  <input type="number" min="0" max="100" className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.completion} onChange={(e) => setForm({ ...form, completion: parseInt(e.target.value) || 0 })} />
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-2">
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Esforço</label>
+                  <select className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.effort} onChange={(e) => setForm({ ...form, effort: e.target.value })}>
+                    {Object.entries(EFFORT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Status</label>
+                  <select className="w-full text-xs p-1.5 border border-slate-200 rounded-lg font-bold" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
+                    {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                  </select>
+                </div>
+                <div>
+                  <label className="block text-[10px] font-bold text-slate-400 uppercase mb-0.5">Documentação</label>
+                  <input className="w-full text-xs p-1.5 border border-slate-200 rounded-lg" value={form.confluenceUrl} onChange={(e) => setForm({ ...form, confluenceUrl: e.target.value })} placeholder="https://..." />
+                </div>
+              </div>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div>
-              <label>Detalhamento</label>
-              <textarea className={input} rows={2} value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} placeholder="Requisitos..." />
+            <div className="p-3 bg-red-50/50 border-t border-red-100">
+              <label className="block text-[10px] font-black text-red-500 uppercase mb-0.5 tracking-widest flex items-center gap-1">
+                <Flag size={10} /> Ponto de Risco
+              </label>
+              <textarea className="w-full text-xs p-1.5 border border-red-200 bg-white rounded-lg text-red-700 min-h-[50px] placeholder-red-300" value={form.riskPoint} onChange={(e) => setForm({ ...form, riskPoint: e.target.value })} placeholder="Descreva possíveis riscos..." />
             </div>
-            <div>
-              <label>Ponto de Risco</label>
-              <textarea className={input} rows={2} value={form.riskPoint} onChange={(e) => setForm({ ...form, riskPoint: e.target.value })} placeholder="Descreva possíveis riscos..." />
+            <div className="p-3 bg-slate-50 border-t border-slate-100 flex justify-end gap-2">
+              <button onClick={() => setShowForm(false)} className="px-3 py-1.5 text-xs font-black text-slate-400 uppercase tracking-widest hover:text-slate-600 transition-colors">Cancelar</button>
+              <button onClick={save} disabled={!form.title || saving} className="px-4 py-1.5 bg-primary-600 text-white text-xs font-black rounded-lg shadow-lg shadow-primary-200 hover:bg-primary-700 transition-all disabled:opacity-50">
+                {saving ? 'Gravando...' : 'Salvar Entrega'}
+              </button>
             </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-2">
-            <div>
-              <label>Documentação</label>
-              <input className={input} value={form.confluenceUrl} onChange={(e) => setForm({ ...form, confluenceUrl: e.target.value })} placeholder="https://..." />
-            </div>
-            <div>
-              <label>Data Prevista</label>
-              <input type="date" className={input} value={form.plannedDate} onChange={(e) => setForm({ ...form, plannedDate: e.target.value })} />
-            </div>
-            <div>
-              <label>% Concluído</label>
-              <input type="number" min="0" max="100" className={input} value={form.completion} onChange={(e) => setForm({ ...form, completion: parseInt(e.target.value) || 0 })} />
-            </div>
-            <div>
-              <label>Esforço</label>
-              <select className={input} value={form.effort} onChange={(e) => setForm({ ...form, effort: e.target.value })}>
-                {Object.entries(EFFORT_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
-            <div>
-              <label>Responsável</label>
-              <select className={input} value={form.assigneeId} onChange={(e) => setForm({ ...form, assigneeId: e.target.value })}>
-                <option value="">Ninguém</option>
-                {users.map((u) => <option key={u.id} value={u.id}>{u.name}</option>)}
-              </select>
-            </div>
-            <div>
-              <label>Status Kanban</label>
-              <select className={input} value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value })}>
-                {Object.entries(STATUS_LABELS).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
-              </select>
-            </div>
-          </div>
-          <div className="flex justify-end gap-2 pt-1">
-            <button onClick={() => setShowForm(false)} className="border border-slate-200 rounded-lg hover:bg-slate-50">Cancelar</button>
-            <button onClick={save} disabled={!form.title || saving} className="bg-primary-600 text-white rounded-lg hover:bg-primary-700 disabled:opacity-50">
-              {saving ? 'Gravando...' : 'Salvar Entrega'}
-            </button>
           </div>
         </div>
       )}
