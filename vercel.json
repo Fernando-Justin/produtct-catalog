@@ -1,7 +1,0 @@
-{
-  "$schema": "https://openapi.vercel.sh/vercel/schema.json",
-  "buildCommand": "npm run build --filter=@product-catalog/web",
-  "outputDirectory": "apps/web/dist",
-  "framework": "vite",
-  "installCommand": "npm install"
-}
