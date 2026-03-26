@@ -8,12 +8,18 @@ const STATUS_COLORS: Record<string, string> = {
   BACKLOG: 'bg-slate-100 text-slate-600',
   IN_PROGRESS: 'bg-blue-100 text-blue-700',
   BLOCKED: 'bg-red-100 text-red-700',
+  HOMOLOGATION: 'bg-amber-100 text-amber-700',
   DONE: 'bg-green-100 text-green-700',
   ARCHIVED: 'bg-slate-200 text-slate-500',
 };
 
 const STATUS_LABELS: Record<string, string> = {
-  BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído', ARCHIVED: 'Arquivado',
+  BACKLOG: 'Backlog', 
+  IN_PROGRESS: 'Em Progresso', 
+  BLOCKED: 'Bloqueado', 
+  HOMOLOGATION: 'Homologação',
+  DONE: 'Concluído', 
+  ARCHIVED: 'Arquivado',
 };
 
 const EFFORT_COLORS: Record<string, string> = {
@@ -113,7 +119,7 @@ export default function RoadmapPage() {
   const [filterProducts, setFilterProducts] = useState<string[]>([]);
   const [filterProjects, setFilterProjects] = useState<string[]>([]);
   const [filterUsers, setFilterUsers] = useState<string[]>([]);
-  const [filterStatus, setFilterStatus] = useState<string[]>(['BACKLOG', 'IN_PROGRESS', 'BLOCKED', 'DONE']);
+  const [filterStatus, setFilterStatus] = useState<string[]>(['BACKLOG', 'IN_PROGRESS', 'BLOCKED', 'HOMOLOGATION', 'DONE']);
 
   const [searchTerm, setSearchTerm] = useState('');
   const [showArchived, setShowArchived] = useState(false);
@@ -603,75 +609,85 @@ export default function RoadmapPage() {
       </div>
 
       {viewMode === 'KANBAN' && (
-        <div className={`grid grid-cols-1 md:grid-cols-${showArchived ? 1 : 4} gap-4 items-start`}>
-          {Object.entries(STATUS_LABELS).filter(([key]) => showArchived ? key === 'ARCHIVED' : key !== 'ARCHIVED').map(([key, label]) => {
+        <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: 'calc(100vh - 220px)' }}>
+          {['BACKLOG', 'IN_PROGRESS', 'BLOCKED', 'HOMOLOGATION', 'DONE'].map((key) => {
             const columnItems = filtered.filter(i => i.status === key);
+            const colors: Record<string, string> = {
+              BACKLOG: 'border-slate-400 bg-slate-50',
+              IN_PROGRESS: 'border-blue-500 bg-blue-50/50',
+              BLOCKED: 'border-red-400 bg-red-50/50',
+              HOMOLOGATION: 'border-amber-500 bg-amber-50/50',
+              DONE: 'border-green-500 bg-green-50/50',
+            };
+            const headerColors: Record<string, string> = {
+              BACKLOG: 'bg-slate-100 text-slate-600',
+              IN_PROGRESS: 'bg-blue-100 text-blue-700',
+              BLOCKED: 'bg-red-100 text-red-700',
+              HOMOLOGATION: 'bg-amber-100 text-amber-700',
+              DONE: 'bg-green-100 text-green-700',
+            };
             return (
-              <div key={key} className="flex flex-col bg-slate-50/50 rounded-xl p-2 border border-slate-100 min-h-[500px]">
-                <div className={`flex items-center justify-between px-2 mb-2 border-l-4 ${key === 'DONE' ? 'border-green-500' : key === 'IN_PROGRESS' ? 'border-blue-500' : key === 'BLOCKED' ? 'border-red-500' : 'border-slate-300'}`}>
-                  <h4 className="text-[10px] font-bold text-slate-600 uppercase tracking-widest">{label}</h4>
-                  <span className="text-[9px] bg-slate-200 text-slate-600 px-1 py-0.5 rounded-full font-bold">{columnItems.length}</span>
+              <div key={key} className={`flex-shrink-0 w-[280px] flex flex-col rounded-xl border-l-4 ${colors[key]} min-h-full`}>
+                <div className="flex items-center justify-between px-3 py-2 bg-white/80 rounded-tr-xl">
+                  <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-700">{STATUS_LABELS[key]}</h4>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-bold ${headerColors[key]}`}>{columnItems.length}</span>
                 </div>
                 
-                <div className="space-y-3">
+                <div className="flex-1 p-2 space-y-2 overflow-y-auto max-h-[calc(100vh-280px)]">
                   {columnItems.map(item => (
-                    <div key={item.id} onClick={() => openEdit(item)} className="bg-white p-3 rounded-lg border border-slate-200 shadow-sm hover:border-primary-400 transition-all group cursor-pointer relative">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="text-[9px] font-mono text-slate-400 uppercase">{item.identifier || 'Task'}</span>
-                        <div className="flex gap-1">
-                          <span className={`text-[8px] px-1 py-0.5 rounded font-bold ${EFFORT_COLORS[item.effort]}`}>{item.effort}</span>
+                    <div 
+                      key={item.id} 
+                      onClick={() => openEdit(item)} 
+                      className="bg-white p-2.5 rounded-lg border border-slate-200 shadow-sm hover:border-primary-400 hover:shadow-md transition-all cursor-pointer group"
+                    >
+                      <div className="flex items-center justify-between mb-1.5">
+                        <span className="text-[9px] font-mono text-slate-400 uppercase tracking-tight">{item.identifier || '—'}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold ${EFFORT_COLORS[item.effort]}`}>{item.effort}</span>
+                          {item.riskPoint && <Flag size={10} className="text-red-500" />}
                         </div>
                       </div>
                       
-                      <h5 className="text-sm font-semibold text-slate-800 line-clamp-2 mb-1 leading-tight">{item.title}</h5>
+                      <h5 className="text-xs font-semibold text-slate-800 line-clamp-2 leading-tight mb-2">{item.title}</h5>
                       
-                      {item.completion > 0 && (
-                        <div className="mb-2">
-                          <div className="flex justify-between items-center text-[9px] font-bold text-primary-600 mb-0.5">
-                            <span>EVOLUÇÃO</span>
-                            <span>{item.completion}%</span>
-                          </div>
-                          <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
-                            <div className="bg-primary-500 h-full rounded-full transition-all" style={{ width: `${item.completion}%` }} />
-                          </div>
-                        </div>
-                      )}
-
-                      {item.riskPoint && (
-                        <div className="mb-2 p-1 bg-red-50 rounded border border-red-100 text-[10px] text-red-600 line-clamp-2">
-                          <Flag size={10} className="inline mr-1" /> {item.riskPoint}
-                        </div>
-                      )}
-
-                      <div className="flex items-center gap-1.5 text-[10px] text-primary-600 font-bold mb-3">
-                        <Package size={10} />
-                        <span className="truncate">{item.product?.name} {item.project ? ` | ${item.project.name}` : ''}</span>
-                      </div>
-
-
-                      <div className="flex items-center justify-between pt-2 border-t border-slate-50">
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center gap-1">
                           {item.assignee ? (
-                            <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 font-bold text-[8px]" title={item.assignee.name}>
-                              {item.assignee.name.charAt(0)}
+                            <div className="w-5 h-5 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-bold text-[9px]" title={item.assignee.name}>
+                              {item.assignee.name.split(' ').map((n: string) => n[0]).slice(0,2).join('')}
                             </div>
-                          ) : <User size={12} className="text-slate-300" />}
-                          <span className="text-[10px] text-slate-400">
+                          ) : (
+                            <div className="w-5 h-5 rounded-full bg-slate-100 flex items-center justify-center">
+                              <User size={10} className="text-slate-400" />
+                            </div>
+                          )}
+                          <span className="text-[9px] text-slate-400 font-medium">
                             {item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}
                           </span>
                         </div>
-                        {item.confluenceUrl && <ExternalLink size={10} className="text-slate-300 group-hover:text-primary-500" />}
+                        <div className="flex items-center gap-1">
+                          <span className="text-[8px] text-slate-400 truncate max-w-[80px]">{item.product?.name}</span>
+                          {item.confluenceUrl && <ExternalLink size={9} className="text-slate-300" />}
+                        </div>
                       </div>
 
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); updateStatus(item.id, item.status === 'ARCHIVED' ? 'DONE' : 'ARCHIVED'); }}
-                        className="absolute bottom-2 right-8 opacity-0 group-hover:opacity-100 transition-opacity p-1 bg-slate-50 border border-slate-200 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
-                        title={item.status === 'ARCHIVED' ? 'Restaurar' : 'Arquivar'}
-                      >
-                        <Package size={12} />
-                      </button>
+                      {item.completion > 0 && item.completion < 100 && (
+                        <div className="mt-2 pt-2 border-t border-slate-100">
+                          <div className="flex justify-between items-center text-[8px] font-bold text-primary-600 mb-1">
+                            <span>{item.completion}%</span>
+                          </div>
+                          <div className="w-full bg-slate-100 h-1 rounded-full overflow-hidden">
+                            <div className="bg-primary-500 h-full rounded-full" style={{ width: `${item.completion}%` }} />
+                          </div>
+                        </div>
+                      )}
                     </div>
                   ))}
+                  {columnItems.length === 0 && (
+                    <div className="text-center py-8 text-[10px] text-slate-400 font-medium">
+                      Nenhuma atividade
+                    </div>
+                  )}
                 </div>
               </div>
             );

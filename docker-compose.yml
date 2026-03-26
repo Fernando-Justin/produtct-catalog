@@ -1,15 +1,30 @@
 services:
-  postgres:
-    image: postgres:14-alpine
-    container_name: product-catalog-db
+  api:
+    build:
+      context: .
+      target: api-runner
+    container_name: product-catalog-api
+    env_file:
+      - ./apps/api/.env
     environment:
-      POSTGRES_USER: admin
-      POSTGRES_PASSWORD: admin123
-      POSTGRES_DB: product_catalog-db
+      - JWT_EXPIRES_IN=7d
+      - NODE_ENV=production
+      - PORT=3001
+      - DATABASE_URL=postgresql://admin:admin123@product-catalog-db:5432/product_catalog-db
+      - DIRECT_URL=postgresql://admin:admin123@product-catalog-db:5432/product_catalog-db
     ports:
-      - "5432:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - "3001:3001"
+    networks:
+      - default
+    restart: unless-stopped
 
-volumes:
-  postgres_data:
+  web:
+    build:
+      context: .
+      target: web-runner
+    container_name: product-catalog-web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    restart: unless-stopped

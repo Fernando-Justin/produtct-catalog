@@ -1,36 +1,47 @@
 # System Design Review (SDR) - ProductSQUAD Manager
 
-## 1. Decisões de Design (Arquitetura)
-O sistema foi projetado como um **Monorepo** utilizando **Turborepo** para gerenciar as aplicações `web` (Frontend) e `api` (Backend) em um único repositório, garantindo consistência de tipos e compartilhamento de configurações.
+## 1. Arquitetura e Stack
 
-### 1.1 Stack Tecnológica
-- **Frontend**: React (Vite) + Tailwind CSS + Lucide React (Ícones).
+O sistema utiliza uma estrutura de **Monorepo** gerenciada pelo **Turborepo**, garantindo _end-to-end type safety_ e compartilhamento de configurações entre `apps/web` e `apps/api`.
+
+### 1.1 Tecnologias Core
+
+- **Frontend**: React 18 (Vite) + Tailwind CSS.
 - **Backend**: Node.js + Express + Prisma ORM.
-- **Banco de Dados**: PostgreSQL (hospedado no Supabase).
-- **Autenticação**: JWT (JSON Web Tokens) + Estratégia Dev Login + Integração futura com Google OAuth via Passport.js.
-- **Linguagem**: TypeScript (End-to-end type safety).
+- **Banco de Dados**: PostgreSQL (Supabase).
+- **Autenticação**: JWT (JSON Web Tokens) com suporte a _Dev Login_ e integração futura Google OAuth.
 
-## 2. Padrões de Implementação
+## 2. Padrões de Design Técnico
 
-### 2.1 Fluxo de Dados (Data Flow)
-1. **Frontend**: Utiliza `axios` para requisições e `React Context/Hooks` para gerenciamento de estado simples (ou TanStack Query para dados dinâmicos).
-2. **API**: Camadas de Roteamento -> Controllers -> Prisma (Database).
-3. **Database**: Migrations gerenciadas pelo Prisma, garantindo versionamento do schema.
+### 2.1 Fluxo de Dados e Estado
 
-### 2.2 Gestão Visual (Gantt & Kanban)
-- **Gantt Chart**: Implementado com componentes customizados para alto desempenho e interatividade.
-- **Scroll Automático**: Lógica de `useEffect` com `refs` para posicionar o usuário no dia atual.
-- **Alinhamento do Responsável**: Cálculo de `offset` dinâmico dentro da barra da atividade para fixar o nome do responsável na data atual (Sticky Info).
+- **API**: Estrutura desacoplada em Roteamento -> Controllers -> Prisma Client.
+- **Web**: Comunicação via `axios`. Gerenciamento de estado via `React Context` para dados globais e Hooks para lógica de componentes.
 
-## 3. Segurança & Permissões
-- O backend valida o JWT em cada requisição protegida.
-- O middleware `checkRole` deve interceptar as rotas para garantir que apenas `ADMIN` ou `TECH_LEAD` possam editar configurações críticas de squads e roles.
+### 2.2 Engenharia do Gráfico de Gantt (Gestão à Vista)
 
-## 4. Estratégia de Importação (Deduplicação)
-- O módulo de importação CSV utiliza um campo `ID` (opcional no arquivo) para identificar itens existentes.
-- Se o ID estiver presente no CSV e no Banco, o sistema realiza um `UPDATE`. Se não, realiza um `CREATE`. Isso evita duplicidades ao re-importar planilhas atualizadas.
+Para atender ao [REQ-06], o componente foi desenhado para visualização anual:
 
-## 5. Auditoria Técnica (Spec Compliance)
-- **SDD Compliance**: O código segue as especificações do `PRD.md` rigorosamente.
-- **Linting**: Padrões de código garantidos via ESLint e Prettier (configurados no root).
-- **Type Checking**: `tsc` executado no pipeline (ou localmente) para evitar erros de tempo de execução.
+- **Auto-focus**: Posicionamento automático no dia atual via `useEffect` e `scrollIntoView`.
+- **Sticky Assignee**: Lógica de cálculo de `offset` dinâmico para manter a identificação do responsável visível mesmo durante o scroll horizontal da barra de atividade.
+
+## 3. Segurança e Permissões (RBAC)
+
+O sistema implementa o controle de acesso baseado em funções (Role-Based Access Control) validado via middleware no backend:
+
+- **ADMIN / TECH_LEAD**: Acesso total para gestão de squads, usuários e catálogos.
+- **USER / GUEST**: Permissões de leitura e interação limitadas conforme a squad de alocação.
+
+## 4. Estratégia de Importação e Idempotência
+
+O módulo de importação CSV [REQ-08] utiliza uma lógica de **Upsert**:
+
+- **Match de ID**: Se o ID existe no CSV e no banco, executa `UPDATE`.
+- **Novo Registro**: Caso contrário, executa `CREATE`.
+  Esta abordagem evita a duplicação de dados em cargas massivas recorrentes.
+
+## 5. Conformidade SDD (Spec-Driven Development)
+
+- **Rastreabilidade**: Toda implementação deve ser mapeada para um requisito do `PRD.md`.
+- **Integridade**: Garantia de sincronia entre o Schema Prisma e as interfaces TypeScript no Frontend.
+- **Qualidade**: Linting e Type Checking obrigatórios no workflow de desenvolvimento.

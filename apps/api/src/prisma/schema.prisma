@@ -380,6 +380,7 @@ enum ActivityStatus {
   BACKLOG
   IN_PROGRESS
   BLOCKED
+  HOMOLOGATION
   DONE
   ARCHIVED
 }
