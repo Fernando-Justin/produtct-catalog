@@ -57,7 +57,7 @@ ENV PORT=3001
 
 EXPOSE 3001
 
-CMD ["node", "dist/server.js"]
+CMD ["sh", "-c", "npx prisma migrate deploy && node dist/server.js"]
 
 # Stage 4: Nginx for Frontend
 FROM nginx:alpine AS web-runner

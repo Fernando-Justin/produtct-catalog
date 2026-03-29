@@ -1,4 +1,25 @@
 services:
+  db:
+    image: postgres:16-alpine
+    container_name: product-catalog-db
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=admin123
+      - POSTGRES_DB=product_catalog-db
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - default
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U admin -d product_catalog-db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
   api:
     build:
       context: .
@@ -10,13 +31,16 @@ services:
       - JWT_EXPIRES_IN=7d
       - NODE_ENV=production
       - PORT=3001
-      - DATABASE_URL=postgresql://admin:admin123@product-catalog-db:5432/product_catalog-db
-      - DIRECT_URL=postgresql://admin:admin123@product-catalog-db:5432/product_catalog-db
+      - DATABASE_URL=postgresql://admin:admin123@db:5432/product_catalog-db
+      - DIRECT_URL=postgresql://admin:admin123@db:5432/product_catalog-db
     ports:
       - "3001:3001"
     networks:
       - default
     restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
 
   web:
     build:
@@ -28,3 +52,7 @@ services:
     depends_on:
       - api
     restart: unless-stopped
+
+volumes:
+  postgres_data:
+    driver: local

@@ -22,6 +22,18 @@ const EFFORT_COLORS: Record<string, string> = {
   M: 'bg-amber-50 text-amber-600', G: 'bg-orange-100 text-orange-600', GG: 'bg-red-100 text-red-600',
 };
 
+const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR');
+};
+
+const formatDateShort = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
+  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+};
+
 const emptyForm = { title: '', description: '', goalIndicator: '', startDateAtividade: '', plannedDate: '', effort: 'M', status: 'BACKLOG', assigneeId: '', identifier: '', confluenceUrl: '', completion: 0, riskPoint: '', projectId: '' };
 
 type ViewMode = 'LIST' | 'KANBAN' | 'TIMELINE';
@@ -89,7 +101,7 @@ export default function ProductRoadmapTab({ product, onRefresh }: Props) {
       i.assignee?.name || '',
       STATUS_LABELS[i.status],
       i.effort,
-      i.plannedDate ? new Date(i.plannedDate).toLocaleDateString('pt-BR') : '',
+      formatDate(i.plannedDate),
       `${i.completion}%`,
       i.riskPoint || ''
     ]);
@@ -294,7 +306,7 @@ function ListView({ filtered, openEdit, remove, updateStatus }: any) {
                 ) : '—'}
               </td>
               <td className="px-4 py-4 text-xs text-slate-600">
-                {item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR') : '—'}
+                {formatDate(item.plannedDate) || '—'}
               </td>
               <td className="px-4 py-4">
                 <span className={`text-[10px] px-2 py-0.5 rounded font-bold ${EFFORT_COLORS[item.effort]}`}>{item.effort}</span>
@@ -384,7 +396,7 @@ function KanbanView({ items, showArchived, openEdit, updateStatus }: any) {
                         </div>
                       )}
                       <span className="text-[9px] text-slate-400 font-medium">
-                        {item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}
+                        {formatDateShort(item.plannedDate) || '—'}
                       </span>
                     </div>
                     {item.confluenceUrl && <ExternalLink size={9} className="text-slate-300" />}
@@ -450,7 +462,7 @@ function TimelineView({ items, users, showArchived }: any) {
                     <div className="mt-3 flex items-center justify-between">
                       <span className={`text-[8px] px-1.5 py-0.5 rounded font-bold ${STATUS_COLORS[t.status]}`}>{STATUS_LABELS[t.status]}</span>
                       <span className="text-[10px] text-slate-500 font-medium">
-                        {t.plannedDate ? new Date(t.plannedDate).toLocaleDateString('pt-BR') : 'Sem data'}
+{formatDate(t.plannedDate) || 'Sem data'}
                       </span>
                     </div>
                   </div>
@@ -474,7 +486,7 @@ function TimelineView({ items, users, showArchived }: any) {
                   <div key={t.id} className="shrink-0 w-48 bg-slate-50 border border-slate-200 rounded-lg p-3 opacity-60">
                     <p className="text-xs font-semibold text-slate-800 line-clamp-2 h-8">{t.title}</p>
                     <div className="mt-2 text-[10px] text-slate-500">
-                      {t.plannedDate ? new Date(t.plannedDate).toLocaleDateString('pt-BR') : 'Sem data'}
+{formatDate(t.plannedDate) || 'Sem data'}
                     </div>
                   </div>
                 ))}

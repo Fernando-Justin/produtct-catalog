@@ -15,6 +15,13 @@ const ACTIVITY_STATUS_LABELS: Record<string, string> = {
   BACKLOG: 'Backlog', IN_PROGRESS: 'Em Progresso', BLOCKED: 'Bloqueado', DONE: 'Concluído', ARCHIVED: 'Arquivado',
 };
 
+const formatDateShort = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}`;
+};
+
 interface Project {
   id: string;
   name: string;
@@ -202,11 +209,11 @@ export default function ProjectsPage() {
                 <div className="flex items-center gap-3">
                   <div className="flex flex-col">
                     <span className="text-[8px] opacity-60">Início</span>
-                    <span className="text-slate-600">{new Date(p.startDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span className="text-slate-600">{formatDateShort(p.startDate)}</span>
                   </div>
                   <div className="flex flex-col">
                     <span className="text-[8px] opacity-60">Previsão</span>
-                    <span className="text-slate-600">{new Date(p.forecastDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })}</span>
+                    <span className="text-slate-600">{formatDateShort(p.forecastDate)}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">

@@ -1,73 +1,918 @@
-# Architecture Overview - ProductSQUAD Manager
+# Arquitetura da Aplicação
+## ProductSQUAD Manager
 
-## 1. Diagrama de Alto Nível (Components)
+## 1. Diagrama de Arquitetura
 
-```mermaid
-graph TD
-  User((Usuário / Stakeholder))
-  AppWeb[Frontend React/Vite]
-  AppApi[Backend Express/Node]
-  DB[(PostgreSQL - Supabase)]
-  Cloud((Supabase Cloud))
-  
-  User -- HTTP/S --> AppWeb
-  AppWeb -- JSON/REST --> AppApi
-  AppApi -- Prisma ORM --> DB
-  DB -- State --> Cloud
-  
-  subgraph Monorepo (Turborepo)
-    AppWeb
-    AppApi
-  end
-  
-  subgraph Data Layer
-    DB
-  end
+```
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        USUÁRIOS                                                │
+│                              Tech Leads | POs | Devs | Admins                                 │
+└─────────────────────────────────────┬───────────────────────────────────────────────────────┘
+                                      │
+                                      ▼ HTTP/HTTPS
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        FRONTEND                                               │
+│                                   React 18 + Vite + TypeScript                                │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                     AppLayout                                            │   │
+│  │  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐          │   │
+│  │  │Sidebar  │  │Topbar   │  │Outlet   │  │Toast    │  │Modals   │  │Loaders  │          │   │
+│  │  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘  └─────────┘          │   │
+│  │                                       │                                                   │   │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────────────┐│   │
+│  │  │                                  Pages                                                ││   │
+│  │  │  Dashboard │ Products │ ProductDetail │ Roadmap │ Squads │ Users │ Roles │ Projects ││   │
+│  │  └─────────────────────────────────────────────────────────────────────────────────────┘│   │
+│  │                                       │                                                   │   │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────────────┐│   │
+│  │  │                               Components                                              ││   │
+│  │  │  Layout │ Products │ Gantt │ Forms │ Tables │ Charts │ Modals │ Filters              ││   │
+│  │  └─────────────────────────────────────────────────────────────────────────────────────┘│   │
+│  │                                       │                                                   │   │
+│  │  ┌─────────────────────────────────────────────────────────────────────────────────────┐│   │
+│  │  │                               State Management                                       ││   │
+│  │  │  AuthContext │ useState │ useEffect │ useMemo │ useCallback                         ││   │
+│  │  └─────────────────────────────────────────────────────────────────────────────────────┘│   │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                       │                                                        │
+│                            ┌──────────┴──────────┐                                              │
+│                            ▼                     ▼                                              │
+│                     ┌────────────┐       ┌────────────┐                                         │
+│                     │  Axios     │       │   Router   │                                         │
+│                     │  Instance  │       │  (Routes)  │                                         │
+│                     └────────────┘       └────────────┘                                         │
+└─────────────────────────────────────────────┬───────────────────────────────────────────────────┘
+                                              │
+                                              ▼ HTTP/REST
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                        BACKEND                                                 │
+│                                   Node.js + Express + TypeScript                               │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                    Routes                                                │   │
+│  │  /auth │ /products │ /apps │ /roadmap │ /squads │ /users │ /roles │ /projetos │ /clients │   │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                       │                                                        │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                  Middlewares                                              │   │
+│  │  helmet() │ cors() │ express.json() │ passport.initialize() │ authMiddleware            │   │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                       │                                                        │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                 Controllers                                               │   │
+│  │  authController │ productController │ roadmapController │ squadController │ userController │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘   │
+│                                       │                                                        │
+│  ┌───────────────────────────────────────────────────────────────────────────────────────┐   │
+│  │                                  Prisma Client                                            │   │
+│  │                          ORM com type-safety e migrations                                 │   │
+│  └───────────────────────────────────────────────────────────────────────────────────────┘   │
+└─────────────────────────────────────────────┬───────────────────────────────────────────────────┘
+                                              │
+                                              ▼ SQL
+┌─────────────────────────────────────────────────────────────────────────────────────────────┐
+│                                    DATABASE                                                   │
+│                              PostgreSQL 16 (Supabase)                                        │
+│  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐  ┌───────────┐               │
+│  │   Users   │  │  Products │  │   Apps    │  │ Roadmap   │  │  Squads    │               │
+│  │   Roles   │  │  Projects  │  │  Clients  │  │  Stacks   │  │  Links     │               │
+│  └───────────┘  └───────────┘  └───────────┘  └───────────┘  └───────────┘               │
+└─────────────────────────────────────────────────────────────────────────────────────────────┘
 ```
 
-## 2. Estrutura de Diretórios (Workspaces)
+---
 
-```text
-/
+## 2. Visão de Camadas
+
+### 2.1 Camada de Apresentação (Frontend)
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                           CAMADA DE APRESENTAÇÃO                           │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         AppLayout                                      │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────────────────────────┐  │  │
+│  │  │  Sidebar   │  │   Topbar   │  │        <Outlet />               │  │  │
+│  │  │ Navigation │  │   Header   │  │   (Renders child routes)        │  │  │
+│  │  └────────────┘  └────────────┘  └────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                           Pages                                       │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────────┐  │  │
+│  │  │ Dashboard  │  │  Products   │  │  Roadmap   │  │   Squads    │  │  │
+│  │  │   Page     │  │   Page      │  │   Page     │  │   Page      │  │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └─────────────┘  │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────────┐  │  │
+│  │  │   Users    │  │   Roles     │  │  Projects  │  │   About     │  │  │
+│  │  │   Page     │  │   Page      │  │   Page     │  │   Page      │  │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └─────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         Components                                     │  │
+│  │  ┌────────────┐  ┌────────────┐  ┌────────────┐  ┌─────────────┐  │  │
+│  │  │   Layout    │  │  Products   │  │   Gantt    │  │   Forms     │  │  │
+│  │  │ Components  │  │ Components  │  │   Chart    │  │   Modals    │  │  │
+│  │  └────────────┘  └────────────┘  └────────────┘  └─────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Responsabilidades**:
+- Renderização de UI e components React
+- Gerenciamento de estado local (useState)
+- Lifecycle de componentes (useEffect)
+- Interação com API via Axios
+- Tratamento de erros local (try/catch, toasts)
+- Formatação de dados para exibição
+
+### 2.2 Camada de Negócio
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                            CAMADA DE NEGÓCIO                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         Controllers                                   │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │  │
+│  │  │ authController │  │productController│  │  roadmapController     │  │  │
+│  │  │ - devLogin()   │  │- CRUD Products │  │- CRUD Roadmap Items    │  │  │
+│  │  │ - googleAuth() │  │- CRUD Apps     │  │- Import CSV/XLSX      │  │  │
+│  │  │ - getMe()      │  │- CRUD Stacks   │  │- Export CSV           │  │  │
+│  │  └────────────────┘  └────────────────┘  └────────────────────────┘  │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │  │
+│  │  │ squadController│  │ userController │  │  projectController     │  │  │
+│  │  │ - CRUD Squads  │  │- CRUD Users   │  │- CRUD Projects        │  │  │
+│  │  └────────────────┘  └────────────────┘  └────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         Business Logic                                │  │
+│  │  • Validação de campos obrigatórios                                  │  │
+│  │  • Regras de negócio (Upsert, auto-dates)                            │  │
+│  │  • Mapeamento de erros Prisma → HTTP codes                          │  │
+│  │  • Transformação de dados (DTOs)                                    │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Responsabilidades**:
+- Lógica de validação de entrada
+- Aplicação de regras de negócio
+- Coordenação entre rotas e repositórios
+- Mapeamento de erros para códigos HTTP
+- Transformação de dados para resposta
+
+### 2.3 Camada de Dados
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                             CAMADA DE DADOS                               │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                       Prisma Client                                   │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │  │
+│  │  │ prisma.user    │  │ prisma.product │  │   prisma.roadmapItem  │  │  │
+│  │  │ prisma.role    │  │ prisma.app     │  │   prisma.project      │  │  │
+│  │  │ prisma.squad   │  │ prisma.client  │  │   prisma.productStack │  │  │
+│  │  └────────────────┘  └────────────────┘  └────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                         Repository Pattern                            │  │
+│  │  • Queries encapsuladas                                              │  │
+│  │  • Relations include                                                 │  │
+│  │  • Aggregations (_count)                                             │  │
+│  │  • Pagination (skip/take)                                           │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Responsabilidades**:
+- Abstração de queries SQL
+- Gerenciamento de transações
+- Migrations de banco de dados
+- Type-safety em queries
+
+### 2.4 Camada de Infraestrutura
+
+```
+┌────────────────────────────────────────────────────────────────────────────┐
+│                          CAMADA DE INFRAESTRUTURA                         │
+├────────────────────────────────────────────────────────────────────────────┤
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                     Express Application                                │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │  │
+│  │  │   Helmet       │  │     CORS       │  │   Express JSON        │  │  │
+│  │  │ Security Hdrs  │  │   Origin Ctrl  │  │   Body Parser         │  │  │
+│  │  └────────────────┘  └────────────────┘  └────────────────────────┘  │  │
+│  │  ┌────────────────┐  ┌────────────────┐  ┌────────────────────────┐  │  │
+│  │  │  Passport.js   │  │    JWT         │  │   Prisma Client       │  │  │
+│  │  │  OAuth20       │  │    Verify      │  │   Database Connection │  │  │
+│  │  └────────────────┘  └────────────────┘  └────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+│  ┌──────────────────────────────────────────────────────────────────────┐  │
+│  │                          External Services                            │  │
+│  │  ┌────────────────────────────────────────────────────────────────┐  │  │
+│  │  │                    Supabase PostgreSQL                           │  │  │
+│  │  │  • Connection Pooling                                           │  │  │
+│  │  │  • SSL/TLS                                                      │  │  │
+│  │  │  • Connection String from .env                                  │  │  │
+│  │  └────────────────────────────────────────────────────────────────┘  │  │
+│  └──────────────────────────────────────────────────────────────────────┘  │
+│                                                                            │
+└────────────────────────────────────────────────────────────────────────────┘
+```
+
+---
+
+## 3. Estrutura de Diretórios
+
+```
+product-catalog/
+│
 ├── apps/
-│   ├── api/            # Backend Express + Prisma Client
-│   │   ├── prisma/     # Database Schema & Migrations
-│   │   ├── src/        # Controllers, Routes, Middlewares
-│   │   └── package.json
-│   └── web/            # Frontend React + Tailwind
-│       ├── src/        # Components (Gantt, Sidebar, etc.), Pages, Hooks
+│   ├── api/                                    # Backend (Node.js + Express)
+│   │   ├── prisma/
+│   │   │   ├── schema.prisma                  # Database schema
+│   │   │   └── migrations/                    # Migration files
+│   │   ├── src/
+│   │   │   ├── app.ts                         # Express app configuration
+│   │   │   ├── server.ts                       # Server entry point
+│   │   │   ├── config/
+│   │   │   │   ├── env.ts                     # Environment variables
+│   │   │   │   ├── database.ts                # Prisma client instance
+│   │   │   │   └── passport.ts                 # Passport configuration
+│   │   │   ├── controllers/
+│   │   │   │   ├── auth.controller.ts         # Authentication logic
+│   │   │   │   ├── product.controller.ts      # Product CRUD
+│   │   │   │   ├── roadmap.controller.ts     # Roadmap logic
+│   │   │   │   ├── squad.controller.ts        # Squad CRUD
+│   │   │   │   ├── user.controller.ts        # User CRUD
+│   │   │   │   ├── role.controller.ts         # Role CRUD
+│   │   │   │   ├── project.controller.ts      # Project CRUD
+│   │   │   │   └── dashboard.controller.ts    # Dashboard stats
+│   │   │   ├── middlewares/
+│   │   │   │   ├── auth.middleware.ts          # JWT verification
+│   │   │   │   └── error.middleware.ts         # Error handling
+│   │   │   └── routes/
+│   │   │       └── index.ts                    # All API routes
+│   │   ├── .env.example                        # Environment template
+│   │   ├── package.json
+│   │   └── tsconfig.json
+│   │
+│   └── web/                                    # Frontend (React + Vite)
+│       ├── src/
+│       │   ├── main.tsx                        # React entry point
+│       │   ├── App.tsx                          # Main app + routing
+│       │   ├── index.css                        # Tailwind imports
+│       │   ├── components/
+│       │   │   ├── Layout/
+│       │   │   │   ├── AppLayout.tsx            # Main layout wrapper
+│       │   │   │   ├── Sidebar.tsx              # Navigation sidebar
+│       │   │   │   └── Topbar.tsx               # Top header bar
+│       │   │   ├── Products/
+│       │   │   │   ├── ProductFormModal.tsx     # Product create/edit form
+│       │   │   │   ├── ProductDevsTab.tsx       # Devs tab content
+│       │   │   │   ├── ProductEnvironmentsTab.tsx
+│       │   │   │   ├── ProductStacksTab.tsx
+│       │   │   │   ├── ProductAppsTab.tsx
+│       │   │   │   ├── ProductClientsTab.tsx
+│       │   │   │   └── ProductRoadmapTab.tsx
+│       │   │   └── Gantt/
+│       │   │       └── GanttChart.tsx          # Gantt visualization
+│       │   ├── pages/
+│       │   │   ├── LoginPage.tsx               # Login page
+│       │   │   ├── AuthCallbackPage.tsx         # OAuth callback
+│       │   │   ├── DashboardPage.tsx            # Dashboard with charts
+│       │   │   ├── ProductsPage.tsx             # Product listing
+│       │   │   ├── ProductDetailPage.tsx        # Product detail with tabs
+│       │   │   ├── RoadmapPage.tsx               # Kanban/Gantt/List views
+│       │   │   ├── SquadsPage.tsx               # Squad management
+│       │   │   ├── UsersPage.tsx                # User management
+│       │   │   ├── RolesPage.tsx                 # Role management
+│       │   │   ├── ProjectsPage.tsx             # Project management
+│       │   │   └── AboutPage.tsx                # About page
+│       │   ├── contexts/
+│       │   │   └── AuthContext.tsx              # Auth state management
+│       │   ├── routes/
+│       │   │   └── ProtectedRoute.tsx           # Route protection wrapper
+│       │   └── lib/
+│       │       ├── api.ts                       # Axios instance
+│       │       └── utils.ts                     # Utility functions
+│       ├── public/                              # Static assets
+│       ├── .env                                 # Environment variables
+│       ├── vite.config.ts                       # Vite configuration
+│       ├── tailwind.config.ts                   # Tailwind configuration
+│       ├── tsconfig.json
 │       └── package.json
-├── package.json        # Root workspace configuration
-└── turbo.json          # Turborepo task management
+│
+├── packages/
+│   └── shared/                                  # Shared code (types, utils)
+│       └── src/
+│           └── index.ts                         # Shared TypeScript types
+│
+├── package.json                                 # Root workspace config
+├── turbo.json                                   # Turborepo configuration
+├── tsconfig.json                                # Root TypeScript config
+├── docker-compose.yml                           # Docker setup
+├── Dockerfile                                   # Multi-stage Docker build
+├── README.md                                    # Project documentation
+├── PRD.md                                       # Product Requirements
+├── SDR.md                                       # Software Design Record
+└── architecture.md                              # This file
 ```
 
-## 3. Fluxo de Autenticação (JWT)
+---
 
-```mermaid
-sequenceDiagram
-    participant User as Usuário
-    participant Web as Frontend React
-    participant API as Backend Express
-    participant DB as Supabase DB
+## 4. Fluxo de Dados
 
-    User->>Web: Login (Google/Dev)
-    Web->>API: POST /api/auth/dev-login
-    API->>DB: Check User exist
-    DB-->>API: User Data
-    API-->>Web: Set-Cookie: token=JWT
-    Web->>API: GET /api/dashboard (Cookie: token)
-    API->>API: Verify JWT
-    API-->>Web: Dashboard JSON Data
+### 4.1 Fluxo Unidirecional
+
+```
+┌─────────┐      User Action       ┌─────────────┐      API Call       ┌──────────┐
+│  USER   │ ──────────────────────▶│   REACT     │ ──────────────────▶│  AXIOS   │
+│ Browser │                       │  Component  │                     │  Client  │
+└─────────┘                       └─────────────┘                     └────┬─────┘
+                                       ▲                                    │
+                                       │                                    ▼
+                                  ┌────┴────┐                          ┌──────────┐
+                                  │ STATE   │◀────────────────────────│  AXIOS   │
+                                  │ UPDATE  │     JSON Response        │ Response │
+                                  └─────────┘                          └──────────┘
 ```
 
-## 4. Estratégia de Deploy & CI/CD
-- **Infra**: Provisionamento via **Supabase** (Postgres + Auth).
-- **Frontend**: Podendo ser hospedado via Vercel ou Netlify (build `npm run build` do `apps/web`).
-- **Backend**: Containerizado ou hospedado via PaaS (Heroku, Render, AWS App Runner).
-- **Migrations**: `npx prisma migrate deploy` executado no pipeline de CD para atualizar o ambiente de PRD.
+### 4.2 Fluxo Completo de Requisição
 
-## 5. Convenções Técnicas
-- **Naming**: `PascalCase` para Componentes, `camelCase` para funções e variáveis.
-- **State**: `useState` para estados locais, `Context API` para estados globais leves.
-- **Styling**: **Tailwind CSS** (Utility-first) com foco em redução de espaçamentos e layouts densos.
-- **SDD Pattern**: O desenvolvimento é orientado por especificações rigorosas registradas no PRD/SDR.
+```
+1. User Interaction (click, submit, etc.)
+         │
+         ▼
+2. React Event Handler (onClick, onSubmit)
+         │
+         ▼
+3. State Update (useState setter)
+         │
+         ▼
+4. Side Effect Trigger (useEffect or async handler)
+         │
+         ▼
+5. API Call (api.post, api.get from lib/api.ts)
+         │
+         ▼
+6. Axios Interceptor - Attach Bearer Token
+         │
+         ▼
+7. HTTP Request to Backend
+         │
+         ▼
+8. Express Middleware Chain
+   - helmet() → cors() → express.json() → authMiddleware
+         │
+         ▼
+9. Route Matching (/api/products, /api/roadmap, etc.)
+         │
+         ▼
+10. Controller Execution
+         │
+         ▼
+11. Prisma ORM Query
+         │
+         ▼
+12. PostgreSQL Database
+         │
+         ▼
+13. Prisma Result Mapping
+         │
+         ▼
+14. Controller Response (res.json, res.status)
+         │
+         ▼
+15. Axios Response Interceptor
+         │
+         ▼
+16. React State Update (setData)
+         │
+         ▼
+17. Re-render Component
+```
+
+---
+
+## 5. Componentes e Suas Responsabilidades
+
+### 5.1 AppLayout
+
+**Localização**: `apps/web/src/components/Layout/AppLayout.tsx`
+
+**Responsabilidades**:
+- Wrapper principal da aplicação autenticada
+- Renderização de Sidebar e Topbar
+- Outlet para renderização de rotas filhas
+- Layout flex com scroll
+
+**Props/Inputs**: Nenhuma ( outlet renderiza rotas filhas)
+
+**Outputs**: Layout visual com navegação
+
+---
+
+### 5.2 Sidebar
+
+**Localização**: `apps/web/src/components/Layout/Sidebar.tsx`
+
+**Responsabilidades**:
+- Navegação principal da aplicação
+- Links para todas as páginas
+- Indicador de rota ativa
+- Toggle de collapse (se implementado)
+
+**Links de Navegação**:
+| Path | Label | Ícone |
+|------|-------|-------|
+| `/dashboard` | Dashboard | LayoutDashboard |
+| `/products` | Produtos | Package |
+| `/delivery` | Delivery | GitBranch |
+| `/squads` | Squads | Boxes |
+| `/users` | Usuários | Users |
+| `/roles` | Funções | Shield |
+| `/projetos` | Projetos | FolderKanban |
+
+---
+
+### 5.3 GanttChart
+
+**Localização**: `apps/web/src/components/Gantt/GanttChart.tsx`
+
+**Responsabilidades**:
+- Renderização de timeline anual (Jan-Dez)
+- Agrupamento por Projeto → Produto → Atividade
+- Barras de atividade com datas de início/fim
+- Auto-scroll para o dia atual
+- Indicadores visuais (Done, Risk)
+- Progress bar de conclusão
+
+**Props/Inputs**:
+```typescript
+interface GanttChartProps {
+  items: any[];              // RoadmapItems
+  projects: any[];           // Projects for grouping
+  products: any[];           // Products for grouping
+  onEditTask: (task) => void; // Edit callback
+  getUserColor: (userId) => string;
+  getStatusOpacity: (status) => string;
+}
+```
+
+**Características Técnicas**:
+- `useMemo` para cálculo de timeline e agrupamento
+- `useEffect` para auto-scroll
+- CSS Grid com células fixas de 32px
+- Sticky headers para scroll horizontal
+
+---
+
+### 5.4 DashboardPage
+
+**Localização**: `apps/web/src/pages/DashboardPage.tsx`
+
+**Responsabilidades**:
+- Carregamento de estatísticas via `GET /api/dashboard/stats`
+- Renderização de cards de métricas
+- Renderização de gráficos (Recharts)
+
+**Componentes Internos**:
+- Stat Cards (4)
+- PieChart (status distribution)
+- BarChart (effort distribution)
+- BarChart horizontal (roadmap by product/user)
+- Deadline cards
+
+---
+
+### 5.5 RoadmapPage
+
+**Localização**: `apps/web/src/pages/RoadmapPage.tsx`
+
+**Responsabilidades**:
+- Gerenciamento de views (Kanban/Gantt/List)
+- Filtros por produto, projeto, usuário, status
+- CRUD de RoadmapItems
+- Import/Export CSV/XLSX
+
+**Views**:
+1. **Kanban**: Colunas por status com drag-and-drop
+2. **Gantt**: Timeline via GanttChart component
+3. **List**: Tabela com ordenação
+
+---
+
+## 6. Serviços e Utilidades
+
+### 6.1 Axios Instance (api.ts)
+
+**Localização**: `apps/web/src/lib/api.ts`
+
+**Responsabilidade**: Cliente HTTP configurado com interceptors
+
+**Configuração**:
+```typescript
+const api = axios.create({
+  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:3001/api'
+});
+```
+
+**Request Interceptor**:
+- Adiciona `Authorization: Bearer {token}` do localStorage
+
+**Response Interceptor**:
+- Trata 401: Limpa token, redireciona para /login
+
+---
+
+### 6.2 AuthContext
+
+**Localização**: `apps/web/src/contexts/AuthContext.tsx`
+
+**Responsabilidade**: Gerenciamento de estado global de autenticação
+
+**Estado**:
+```typescript
+interface AuthState {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+}
+```
+
+**Métodos**:
+- `login(token, user)`: Armazena token e usuário
+- `logout()`: Limpa estado e redireciona
+- `isAuthenticated`: Boolean para verificação
+
+---
+
+## 7. Comunicação com Backend
+
+### 7.1 Endpoints de Autenticação
+
+| Método | Path | Descrição | Auth |
+|--------|------|-----------|------|
+| POST | `/api/auth/dev-login` | Login dev (name, email) | No |
+| GET | `/api/auth/google` | Inicia OAuth Google | No |
+| GET | `/api/auth/google/callback` | Callback OAuth | No |
+| GET | `/api/auth/me` | Get current user | Yes |
+
+### 7.2 Endpoints de Produtos
+
+| Método | Path | Descrição | Auth |
+|--------|------|-----------|------|
+| GET | `/api/products` | Lista produtos | Yes |
+| GET | `/api/products/:id` | Detalhe produto | Yes |
+| POST | `/api/products` | Criar produto | Yes |
+| PUT | `/api/products/:id` | Atualizar produto | Yes |
+| DELETE | `/api/products/:id` | Excluir produto | Yes |
+| POST | `/api/products/:productId/devs` | Adicionar dev | Yes |
+| DELETE | `/api/products/:productId/devs/:userId` | Remover dev | Yes |
+| POST | `/api/products/:productId/stacks` | Adicionar stack | Yes |
+| DELETE | `/api/products/:productId/stacks/:id` | Remover stack | Yes |
+| PUT | `/api/products/:productId/environments/:envName` | Upsert ambiente | Yes |
+| PUT | `/api/products/:productId/databases/:envName` | Upsert banco | Yes |
+| POST | `/api/products/:productId/links` | Adicionar link | Yes |
+| DELETE | `/api/products/:productId/links/:id` | Remover link | Yes |
+
+### 7.3 Endpoints de Roadmap
+
+| Método | Path | Descrição | Auth |
+|--------|------|-----------|------|
+| GET | `/api/roadmap` | Lista itens | Yes |
+| POST | `/api/roadmap` | Criar item | Yes |
+| PUT | `/api/roadmap/:id` | Atualizar item | Yes |
+| DELETE | `/api/roadmap/:id` | Excluir item | Yes |
+| POST | `/api/roadmap/import` | Importar CSV | Yes |
+| POST | `/api/roadmap/import/xlsx` | Importar XLSX | Yes |
+
+### 7.4 Endpoints de Dashboard
+
+| Método | Path | Descrição | Auth |
+|--------|------|-----------|------|
+| GET | `/api/dashboard/stats` | Estatísticas consolidadas | Yes |
+
+---
+
+## 8. Estado da Aplicação
+
+### 8.1 Gerenciamento de Estado
+
+| Tipo | Tecnologia | Uso |
+|------|------------|-----|
+| **Global** | React Context | Auth (token, user) |
+| **Local** | useState | Formulários, modais, filtros |
+| **Server** | useEffect + Axios | Dados de API |
+| **Computed** | useMemo | Cálculos derivados |
+
+### 8.2 Estrutura do Estado Global (AuthContext)
+
+```typescript
+interface AuthContextType {
+  user: User | null;
+  token: string | null;
+  loading: boolean;
+  isAuthenticated: boolean;
+  login: (token: string, user: User) => void;
+  logout: () => void;
+}
+```
+
+### 8.3 Estado Local por Página
+
+**DashboardPage**:
+```typescript
+const [stats, setStats] = useState<Stats | null>(null);
+```
+
+**ProductsPage**:
+```typescript
+const [products, setProducts] = useState<Product[]>([]);
+const [search, setSearch] = useState('');
+const [showModal, setShowModal] = useState(false);
+```
+
+**RoadmapPage**:
+```typescript
+const [items, setItems] = useState<RoadmapItem[]>([]);
+const [viewMode, setViewMode] = useState<'KANBAN' | 'LIST' | 'GANTT'>('KANBAN');
+const [filters, setFilters] = useState<FilterState>({...});
+```
+
+---
+
+## 9. Roteamento
+
+### 9.1 Estrutura de Rotas
+
+```typescript
+// App.tsx
+<BrowserRouter>
+  <AuthProvider>
+    <Routes>
+      {/* Public Routes */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/auth/callback" element={<AuthCallbackPage />} />
+      
+      {/* Protected Routes */}
+      <Route path="/" element={<ProtectedRoute />}>
+        <Route element={<AppLayout />}>
+          <Route index element={<Navigate to="/dashboard" />} />
+          <Route path="dashboard" element={<DashboardPage />} />
+          <Route path="products" element={<ProductsPage />} />
+          <Route path="products/:id" element={<ProductDetailPage />} />
+          <Route path="delivery" element={<RoadmapPage />} />
+          <Route path="squads" element={<SquadsPage />} />
+          <Route path="users" element={<UsersPage />} />
+          <Route path="roles" element={<RolesPage />} />
+          <Route path="projetos" element={<ProjectsPage />} />
+          <Route path="about" element={<AboutPage />} />
+        </Route>
+      </Route>
+      
+      {/* Catch-all */}
+      <Route path="*" element={<Navigate to="/dashboard" />} />
+    </Routes>
+  </AuthProvider>
+</BrowserRouter>
+```
+
+### 9.2 ProtectedRoute
+
+**Localização**: `apps/web/src/routes/ProtectedRoute.tsx`
+
+**Responsabilidade**: Verificar autenticação antes de renderizar rotas filhas
+
+**Lógica**:
+```typescript
+if (!isAuthenticated) {
+  return <Navigate to="/login" />;
+}
+return <Outlet />;
+```
+
+### 9.3 Lazy Loading
+
+- Rotas são carregadas via React Router
+- Componentes grandes (GanttChart) podem ser isolados com `React.lazy()`
+
+---
+
+## 10. Otimizações
+
+### 10.1 Code Splitting
+
+- Rotas separadas = chunks separados
+- GanttChart pode ser lazy loaded se necessário
+
+### 10.2 Memoização
+
+**GanttChart**:
+```typescript
+const timeline = useMemo(() => {
+  // Calcula timeline apenas quando necessário
+}, [/* deps */]);
+
+const groupedData = useMemo(() => {
+  // Agrupa dados apenas quando items/projects/products mudam
+}, [items, projects, products]);
+```
+
+### 10.3 Re-renderização
+
+- Componentes puros não re-renderizam desnecessariamente
+- Callbacks memozados com useCallback quando passados como props
+
+---
+
+## 11. Testes
+
+### 11.1 Estratégia de Teste (Não Implementada)
+
+| Tipo | Framework | Cobertura Alvo |
+|------|-----------|----------------|
+| Unit | Jest + React Testing Library | 70%+ |
+| E2E | Playwright ou Cypress | Fluxos críticos |
+
+### 11.2 Testes Recomendados
+
+**Unit Tests**:
+- GanttChart: Cálculo de posição, agrupamento
+- Controllers: Validação, erros
+- Utils: Formatação de dados
+
+**E2E Tests**:
+- Login flow
+- CRUD Products
+- Import CSV
+- Roadmap Kanban drag
+
+---
+
+## 12. Deployment
+
+### 12.1 Ambientes
+
+| Ambiente | URL | Propósito |
+|----------|-----|-----------|
+| Development | localhost:3000/3001 | Desenvolvimento local |
+| Staging | (a definir) | Homologação |
+| Production | (a definir) | Produção |
+
+### 12.2 Pipeline CI/CD
+
+```yaml
+# GitHub Actions (exemplo)
+workflows:
+  ci:
+    - Checkout
+    - npm install
+    - npx prisma generate
+    - npm run lint
+    - npm run typecheck
+    - npm test
+  
+  deploy:
+    - Checkout
+    - npm install
+    - npm run build
+    - Deploy to Vercel/Render/Heroku
+```
+
+### 12.3 Variáveis de Ambiente
+
+**Backend (apps/api/.env)**:
+```
+DATABASE_URL=postgresql://...
+JWT_SECRET=your-secret-key
+GOOGLE_CLIENT_ID=xxx
+GOOGLE_CLIENT_SECRET=xxx
+FRONTEND_URL=http://localhost:3000
+PORT=3001
+```
+
+**Frontend (apps/web/.env)**:
+```
+VITE_API_URL=http://localhost:3001/api
+```
+
+### 12.4 Docker
+
+```yaml
+# docker-compose.yml (resumo)
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: productsquad
+      POSTGRES_PASSWORD: password
+    ports:
+      - "5432:5432"
+  
+  api:
+    build: ./apps/api
+    ports:
+      - "3001:3001"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: postgresql://postgres:password@db:5432/productsquad
+  
+  web:
+    build: ./apps/web
+    ports:
+      - "3000:80"
+    depends_on:
+      - api
+    nginx: # Configuração de proxy reverso
+```
+
+### 12.5 Checklist de Deploy
+
+- [ ] Executar `npx prisma migrate deploy`
+- [ ] Verificar variáveis de ambiente
+- [ ] Testar em ambiente staging
+- [ ] Backup do banco de dados
+- [ ] Monitoramento (logs, erros)
+- [ ] Health check configurado (`GET /api/health`)
+
+---
+
+## 13. Monitoramento e Logging
+
+### 13.1 Health Check
+
+```typescript
+// GET /api/health
+{
+  status: 'ok',
+  timestamp: '2024-01-01T00:00:00.000Z'
+}
+```
+
+### 13.2 Error Logging (Futuro)
+
+- Sentry.io para error tracking
+- ELK Stack para log aggregation
+- DataDog ou similar para APM
+
+---
+
+## 14. Segurança Adicional (Futuro)
+
+### 14.1 Rate Limiting
+
+```typescript
+// Exemplo com express-rate-limit
+import rateLimit from 'express-rate-limit';
+
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100 // limit each IP to 100 requests per windowMs
+});
+
+app.use('/api/', limiter);
+```
+
+### 14.2 Helmet Configuration
+
+```typescript
+app.use(helmet({
+  contentSecurityPolicy: true,
+  crossOriginEmbedderPolicy: true,
+  // ... mais headers
+}));
+```
+
+### 14.3 Input Validation
+
+- Adicionar Zod ou Yup para validação de schemas
+- Compartilhar schemas entre frontend e backend
+
+---
+
+## 15. Referências
+
+- [React Documentation](https://react.dev)
+- [Express.js](https://expressjs.com)
+- [Prisma Documentation](https://prisma.io/docs)
+- [Tailwind CSS](https://tailwindcss.com)
+- [Radix UI](https://radix-ui.com)
+- [Recharts](https://recharts.org)
+- [React Router](https://reactrouter.com)
+- [Turborepo](https://turbo.build/repo)

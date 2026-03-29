@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { api } from '../lib/api';
-import { Calendar, User, Flag, Package, Layout, List as ListIcon, Search, ExternalLink, Plus, AlertCircle, Filter, ChevronDown, Check, FolderKanban } from 'lucide-react';
+import { Calendar, User, Flag, Package, Layout, List as ListIcon, Search, ExternalLink, Plus, AlertCircle, Filter, ChevronDown, Check, FolderKanban, FileSpreadsheet } from 'lucide-react';
 import GanttChart from '../components/Gantt/GanttChart';
 import * as DropdownMenu from '@radix-ui/react-dropdown-menu';
+import * as XLSX from 'xlsx';
 
 const STATUS_COLORS: Record<string, string> = {
   BACKLOG: 'bg-slate-100 text-slate-600',
@@ -28,6 +29,25 @@ const EFFORT_COLORS: Record<string, string> = {
 };
 
 const EFFORT_LABELS: Record<string, string> = { PP: 'PP', P: 'P', M: 'M', G: 'G', GG: 'GG' };
+
+const formatDate = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}/${year}`;
+};
+
+const formatDateShort = (dateStr: string | null | undefined) => {
+  if (!dateStr) return '';
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}`;
+};
+
+const getInitials = (name: string | null | undefined) => {
+  if (!name) return '';
+  return name.split(' ').map(n => n[0]).join('').substring(0, 3).toUpperCase();
+};
 
 const USER_COLORS = [
   'bg-blue-500',   // #3B82F6
@@ -129,9 +149,12 @@ export default function RoadmapPage() {
   const [form, setForm] = useState<any>({});
   const [saving, setSaving] = useState(false);
   const [showImport, setShowImport] = useState(false);
+  const [showImportXlsx, setShowImportXlsx] = useState(false);
   const [showModal, setShowModal] = useState(false);
   const [importing, setImporting] = useState(false);
+  const [importingXlsx, setImportingXlsx] = useState(false);
   const [importResult, setImportResult] = useState<any>(null);
+  const [importXlsxResult, setImportXlsxResult] = useState<any>(null);
 
   const load = () => {
     api.get('/roadmap').then((r) => setItems(r.data));
@@ -224,7 +247,7 @@ export default function RoadmapPage() {
       i.assignee?.name || '',
       STATUS_LABELS[i.status],
       i.effort,
-      i.plannedDate ? new Date(i.plannedDate).toLocaleDateString('pt-BR') : '',
+      formatDate(i.plannedDate),
       `${i.completion}%`,
       i.riskPoint || ''
     ]);
@@ -306,6 +329,46 @@ export default function RoadmapPage() {
       }
     };
     reader.readAsText(file);
+  };
+
+  const handleImportXlsx = async (e: any) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setImportingXlsx(true);
+    setImportXlsxResult(null);
+
+    try {
+      const data = await file.arrayBuffer();
+      const workbook = XLSX.read(data, { type: 'array' });
+      const sheetName = workbook.SheetNames[0];
+      const worksheet = workbook.Sheets[sheetName];
+      const jsonData = XLSX.utils.sheet_to_json(worksheet, { defval: '' });
+
+      const items = jsonData.map((row: any) => ({
+        board: row['board'] || row['Board'] || row['PRODUTO'] || row['PRODUTO'] || '',
+        tarefa: row['tarefa'] || row['Tarefa'] || row['TÍTULO'] || row['titulo'] || row['title'] || '',
+        descricao: row['descricao'] || row['descrição'] || row['Descrição'] || row['description'] || '',
+        responsaveis: row['Responsáveis'] || row['responsáveis'] || row['Responsavel'] || row['responsavel'] || row['assignee'] || '',
+        raiaAtual: row['Raia Atual'] || row['raia atual'] || row['Raia'] || row['PROJETO'] || row['projeto'] || row['project'] || '',
+        status: row['status'] || row['Status'] || '',
+        esforco: row['esforço'] || row['esforco'] || row['Esforço'] || row['effort'] || '',
+        dataPrevista: row['Data Prevista'] || row['data prevista'] || row['dataPrevista'] || row['plannedDate'] || '',
+        dataInicio: row['Data Início'] || row['data início'] || row['dataInicio'] || row['startDate'] || '',
+        dataFim: row['Data Fim'] || row['data fim'] || row['dataFim'] || row['finishDate'] || '',
+        conclusao: row['conclusão'] || row['conclusao'] || row['Conclusão'] || row['completion'] || '',
+        risco: row['risco'] || row['Risco'] || row['riskPoint'] || '',
+        identificador: row['identificador'] || row['ID'] || row['id'] || row['identifier'] || '',
+        confluenceUrl: row['confluenceUrl'] || row['Confluence'] || row['confluence'] || '',
+      })).filter(item => item.tarefa || item.board);
+
+      const res = await api.post('/roadmap/import/xlsx', { items });
+      setImportXlsxResult(res.data);
+      load();
+    } catch (err: any) {
+      alert('Erro ao importar arquivo XLSX: ' + (err.response?.data?.detail || err.message));
+    } finally {
+      setImportingXlsx(false);
+    }
   };
 
   return (
@@ -392,6 +455,14 @@ export default function RoadmapPage() {
           <button onClick={() => { setForm({ status: 'BACKLOG', effort: 'M' }); setEditItem(null); setShowModal(true); }} className="px-3 py-1.5 bg-primary-600 text-white rounded-lg text-xs font-black hover:bg-primary-700 transition-all shadow-sm hover:translate-y-[-1px] active:translate-y-0 flex items-center gap-1.5 tracking-tight">
             <Plus size={14} /> NOVO
           </button>
+
+          <button onClick={() => setShowImport(true)} className="px-3 py-1.5 bg-white border border-slate-200 text-slate-600 rounded-lg text-xs font-black hover:bg-slate-50 hover:border-slate-300 transition-all shadow-sm flex items-center gap-1.5 tracking-tight">
+            <Package size={14} /> CSV
+          </button>
+
+          <button onClick={() => setShowImportXlsx(true)} className="px-3 py-1.5 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg text-xs font-black hover:bg-emerald-100 hover:border-emerald-300 transition-all shadow-sm flex items-center gap-1.5 tracking-tight">
+            <FileSpreadsheet size={14} /> XLSX
+          </button>
           
           <DropdownMenu.Root>
             <DropdownMenu.Trigger asChild>
@@ -403,9 +474,6 @@ export default function RoadmapPage() {
                <div className="px-2 py-1.5 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">AÇÕES</div>
                <DropdownMenu.Item className="flex items-center gap-2 px-2 py-2 text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50 rounded-lg transition-colors" onClick={exportCSV}>
                  <ExternalLink size={14} className="text-slate-400" /> EXPORTAR CSV
-               </DropdownMenu.Item>
-               <DropdownMenu.Item className="flex items-center gap-2 px-2 py-2 text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50 rounded-lg transition-colors" onClick={() => setShowImport(true)}>
-                 <Package size={14} className="text-slate-400" /> IMPORTAR CSV
                </DropdownMenu.Item>
                <DropdownMenu.Item className="flex items-center gap-2 px-2 py-2 text-xs font-bold text-slate-600 outline-none cursor-pointer hover:bg-slate-50 rounded-lg transition-colors" onClick={downloadTemplate}>
                  <Calendar size={14} className="text-slate-400" /> TEMPLATE CSV
@@ -602,6 +670,95 @@ export default function RoadmapPage() {
           </div>
         )}
 
+      {showImportXlsx && (
+          <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-[60] flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl overflow-hidden animate-in fade-in slide-in-from-bottom-4 duration-300">
+              <div className="p-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div className="flex items-center gap-2 text-emerald-600">
+                  <FileSpreadsheet size={20} />
+                  <h2 className="font-bold text-slate-800">Importação XLSX</h2>
+                </div>
+                <button onClick={() => { setShowImportXlsx(false); setImportXlsxResult(null); }} className="text-slate-400 hover:text-slate-600 text-2xl transition-colors">&times;</button>
+              </div>
+              
+              <div className="p-6 space-y-5">
+                {!importXlsxResult ? (
+                  <>
+                    <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-4 space-y-3">
+                      <h3 className="text-sm font-bold text-emerald-900 uppercase tracking-tight">Instruções de Importação XLSX</h3>
+                      <ul className="text-xs text-emerald-800 space-y-2 list-disc pl-4 font-medium opacity-90">
+                        <li>Coluna <strong>board</strong>: Nome do Produto (busca por nome exato)</li>
+                        <li>Coluna <strong>Responsáveis</strong>: Nome do Usuário (busca por nome)</li>
+                        <li>Coluna <strong>Raia Atual</strong>: Nome do Projeto (busca por nome)</li>
+                        <li>Coluna <strong>tarefa</strong>: Título da atividade</li>
+                        <li>Coluna <strong>descricao</strong>: Descrição da atividade</li>
+                        <li>Coluna <strong>status</strong>: BACKLOG, IN_PROGRESS, BLOCKED, HOMOLOGATION, DONE, ARCHIVED</li>
+                        <li>Coluna <strong>esforço</strong>: PP, P, M, G, GG</li>
+                        <li>Coluna <strong>dataPrevista</strong>: Data prevista (DD/MM/YYYY ou YYYY-MM-DD)</li>
+                        <li>Coluna <strong>identificador</strong>: ID para deduplicação (opcional)</li>
+                      </ul>
+                    </div>
+
+                    <div className="space-y-3">
+                      <label className="block text-sm font-bold text-slate-700">Selecione o arquivo XLSX</label>
+                      <div className="border-2 border-dashed border-slate-200 rounded-xl p-8 flex flex-col items-center justify-center bg-slate-50 hover:bg-slate-100/50 hover:border-emerald-300 transition-all cursor-pointer relative">
+                        <input 
+                          type="file" 
+                          accept=".xlsx,.xls"
+                          onChange={handleImportXlsx}
+                          disabled={importingXlsx}
+                          className="absolute inset-0 opacity-0 cursor-pointer"
+                        />
+                        <div className="w-12 h-12 bg-white rounded-full shadow-sm flex items-center justify-center text-emerald-600 mb-3">
+                          <FileSpreadsheet size={24} />
+                        </div>
+                        <p className="text-sm font-bold text-slate-600">{importingXlsx ? 'Processando arquivo...' : 'Arraste ou clique para selecionar seu XLSX'}</p>
+                        <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-widest">Máximo 5MB</p>
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <div className="space-y-4 py-4">
+                    <div className="flex items-center gap-4 justify-center">
+                      <div className="text-center p-4 bg-green-50 rounded-2xl border border-green-100 min-w-[120px]">
+                        <p className="text-3xl font-black text-green-600">{importXlsxResult.created}</p>
+                        <p className="text-[10px] text-green-700 font-bold uppercase tracking-widest">Criados</p>
+                      </div>
+                      <div className="text-center p-4 bg-blue-50 rounded-2xl border border-blue-100 min-w-[120px]">
+                        <p className="text-3xl font-black text-blue-600">{importXlsxResult.updated}</p>
+                        <p className="text-[10px] text-blue-700 font-bold uppercase tracking-widest">Atualizados</p>
+                      </div>
+                    </div>
+                    
+                    {importXlsxResult.errors.length > 0 && (
+                      <div className="max-h-[200px] overflow-y-auto border border-red-100 rounded-xl bg-red-50/30 p-4">
+                        <h4 className="text-xs font-bold text-red-600 uppercase mb-3 flex items-center gap-2">
+                          <AlertCircle size={14} /> Erros encontrados ({importXlsxResult.errors.length})
+                        </h4>
+                        <div className="space-y-2">
+                          {importXlsxResult.errors.map((err: any, idx: number) => (
+                            <div key={idx} className="text-[11px] text-red-700 border-b border-red-100 pb-1 flex justify-between gap-4">
+                              <span className="font-bold flex-1">{err.item}</span>
+                              <span className="opacity-70">{err.error}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    
+                    <button 
+                      onClick={() => { setShowImportXlsx(false); setImportXlsxResult(null); }}
+                      className="w-full py-3 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800 transition-all shadow-lg mt-4"
+                    >
+                      Concluir
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
       <div className="flex items-center justify-between mb-2">
         <div className="text-xs font-bold text-slate-400 uppercase tracking-widest">
           {filtered.length} Entregas encontradas
@@ -661,8 +818,12 @@ export default function RoadmapPage() {
                               <User size={10} className="text-slate-400" />
                             </div>
                           )}
-                          <span className="text-[9px] text-slate-400 font-medium">
-                            {item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : '—'}
+                          <span className="text-[8px] text-slate-400 font-medium" title="Data Início">
+                            {formatDateShort(item.startDateAtividade) || '—'}
+                          </span>
+                          <span className="text-slate-300">→</span>
+                          <span className="text-[8px] text-slate-500 font-medium" title="Previsão Fim">
+                            {formatDateShort(item.plannedDate) || '—'}
                           </span>
                         </div>
                         <div className="flex items-center gap-1">
@@ -716,7 +877,7 @@ export default function RoadmapPage() {
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Atividade</th>
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Usuário</th>
                 <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Status</th>
-                <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Data Prevista</th>
+                <th className="text-left px-3 py-2 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Início → Fim</th>
                 <th className="w-10"></th>
               </tr>
             </thead>
@@ -757,6 +918,9 @@ export default function RoadmapPage() {
                       <option value="">Não atribuído</option>
                       {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
                     </select>
+                    {item.assignee?.name && (
+                      <span className="ml-1 text-[9px] text-slate-400 font-medium">{getInitials(item.assignee.name)}</span>
+                    )}
                   </td>
                   <td className="px-3 py-1.5">
                     <select
@@ -770,7 +934,9 @@ export default function RoadmapPage() {
                   <td className="px-4 py-1.5">
                     <div className="flex items-center gap-2 text-slate-600 text-xs">
                       <Calendar size={12} className="text-slate-400" />
-                      <span>{item.plannedDate ? new Date(item.plannedDate).toLocaleDateString('pt-BR') : '—'}</span>
+                      <span className="text-slate-500">{formatDateShort(item.startDateAtividade) || '—'}</span>
+                      <span className="text-slate-300">→</span>
+                      <span className="text-slate-700 font-medium">{formatDateShort(item.plannedDate) || '—'}</span>
                     </div>
                   </td>
                   <td className="px-3 py-1.5">

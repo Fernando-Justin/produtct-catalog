@@ -309,23 +309,46 @@ export const roadmapController = {
 
       for (const item of items) {
         try {
-          const product = await prisma.product.findFirst({
+          let product = await prisma.product.findFirst({
             where: { name: { equals: item.productName, mode: 'insensitive' } }
           });
-          if (!product) throw new Error(`Produto não encontrado: ${item.productName}`);
+          if (!product) {
+            product = await prisma.product.create({
+              data: { name: item.productName, status: 'PLANEJADO' }
+            });
+          }
 
           let assigneeId: number | null = null;
           if (item.assigneeEmail) {
-            const user = await prisma.user.findUnique({ where: { email: item.assigneeEmail } });
-            if (user) assigneeId = user.id;
+            let user = await prisma.user.findUnique({ where: { email: item.assigneeEmail } });
+            if (!user) {
+              const nameFromEmail = item.assigneeEmail.split('@')[0].replace(/\./g, ' ');
+              user = await prisma.user.create({
+                data: { name: nameFromEmail, email: item.assigneeEmail, status: 'ATIVO' }
+              });
+            }
+            assigneeId = user.id;
           }
 
           let projectId: string | null = null;
           if (item.projectName) {
-            const project = await prisma.project.findFirst({
+            let project = await prisma.project.findFirst({
               where: { name: { equals: item.projectName, mode: 'insensitive' } }
             });
-            if (project) projectId = project.id;
+            if (!project) {
+              const defaultPo = await prisma.user.findFirst({ where: { role: { type: 'PO' } } });
+              const poId = defaultPo?.id || 1;
+              project = await prisma.project.create({
+                data: {
+                  name: item.projectName,
+                  status: 'PLANEJADO',
+                  poId,
+                  startDate: new Date(),
+                  forecastDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                }
+              });
+            }
+            projectId = project.id;
           }
 
           const data: any = {
@@ -361,6 +384,102 @@ export const roadmapController = {
       res.json(results);
     } catch (e: any) {
       res.status(500).json({ error: 'Erro ao importar itens', detail: e.message });
+    }
+  },
+
+  importItemsFromXlsx: async (req: AuthRequest, res: Response) => {
+    try {
+      const { items } = req.body;
+      const results = { created: 0, updated: 0, errors: [] as any[] };
+
+      for (const item of items) {
+        try {
+          let product = await prisma.product.findFirst({
+            where: { name: { equals: item.board, mode: 'insensitive' } }
+          });
+          if (!product) {
+            product = await prisma.product.create({
+              data: { name: item.board, status: 'PLANEJADO' }
+            });
+          }
+
+          let assigneeId: number | null = null;
+          if (item.responsaveis) {
+            let user = await prisma.user.findFirst({
+              where: { name: { equals: item.responsaveis, mode: 'insensitive' } }
+            });
+            if (!user) {
+              const emailGenerated = item.responsaveis.toLowerCase().replace(/\s+/g, '.') + '@imported.local';
+              user = await prisma.user.create({
+                data: { name: item.responsaveis, email: emailGenerated, status: 'ATIVO' }
+              });
+            }
+            assigneeId = user.id;
+          }
+
+          let projectId: string | null = null;
+          if (item.raiaAtual) {
+            let project = await prisma.project.findFirst({
+              where: { name: { equals: item.raiaAtual, mode: 'insensitive' } }
+            });
+            if (!project) {
+              const defaultPo = await prisma.user.findFirst({ where: { role: { type: 'PO' } } });
+              const poId = defaultPo?.id || 1;
+              project = await prisma.project.create({
+                data: {
+                  name: item.raiaAtual,
+                  status: 'PLANEJADO',
+                  poId,
+                  startDate: new Date(),
+                  forecastDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)
+                }
+              });
+            }
+            projectId = project.id;
+          }
+
+          const data: any = {
+            title: item.tarefa || item.title || 'Untitled',
+            description: item.descricao || item.descrição || item.description || null,
+            status: (item.status || 'BACKLOG').toUpperCase(),
+            effort: (item.esforco || item.esforço || item.effort || 'M').toUpperCase(),
+            plannedDate: item.dataPrevista || item.data_prevista || item.plannedDate ? new Date(item.dataPrevista || item.data_prevista || item.plannedDate) : null,
+            startDateAtividade: item.dataInicio || item.data_inicio || item.startDateAtividade ? new Date(item.dataInicio || item.data_inicio || item.startDateAtividade) : null,
+            finishDateAtividade: item.dataFim || item.data_fim || item.finishDateAtividade ? new Date(item.dataFim || item.data_fim || item.finishDateAtividade) : null,
+            completion: parseInt(item.conclusao || item.conclusão || item.completion) || 0,
+            riskPoint: item.risco || item.riskPoint || null,
+            identifier: item.identificador || item.id || item.identifier || null,
+            confluenceUrl: item.confluenceUrl || null,
+            productId: product.id,
+            projectId,
+            assigneeId,
+          };
+
+          if (data.status && !['BACKLOG', 'IN_PROGRESS', 'BLOCKED', 'HOMOLOGATION', 'DONE', 'ARCHIVED'].includes(data.status)) {
+            data.status = 'BACKLOG';
+          }
+          if (data.effort && !['PP', 'P', 'M', 'G', 'GG'].includes(data.effort)) {
+            data.effort = 'M';
+          }
+
+          if (item.identificador || item.id || item.identifier) {
+            const existing = await prisma.roadmapItem.findFirst({ where: { identifier: data.identifier } });
+            if (existing) {
+              await prisma.roadmapItem.update({ where: { id: existing.id }, data });
+              results.updated++;
+              continue;
+            }
+          }
+
+          await prisma.roadmapItem.create({ data });
+          results.created++;
+        } catch (e: any) {
+          results.errors.push({ item: item.tarefa || item.title || item.id, error: e.message });
+        }
+      }
+      res.json(results);
+    } catch (e: any) {
+      res.status(500).json({ error: 'Erro ao importar itens do XLSX', detail: e.message });
     }
   },
 };

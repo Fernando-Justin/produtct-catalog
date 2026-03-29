@@ -215,6 +215,7 @@ router.post('/roadmap', auth, asAuth(roadmapController.create));
 router.put('/roadmap/:id', auth, asAuth(roadmapController.update));
 router.delete('/roadmap/:id', auth, asAuth(roadmapController.delete));
 router.post('/roadmap/import', auth, asAuth(roadmapController.importItems));
+router.post('/roadmap/import/xlsx', auth, asAuth(roadmapController.importItemsFromXlsx));
 
 // ─── SQUADS ─────────────────────────────────────────
 router.get('/squads', auth, asAuth(squadController.list));
