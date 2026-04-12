@@ -2,6 +2,13 @@ import { Response } from 'express';
 import { prisma } from '../config/database';
 import { AuthRequest } from '../middlewares/auth.middleware';
 
+const parseDate = (dateStr: string | undefined | null): Date | null => {
+  if (!dateStr) return null;
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return new Date(Number(year), Number(month) - 1, Number(day), 12, 0, 0);
+};
+
 // ─── PRODUCTS ───────────────────────────────────────
 
 export const productController = {
@@ -256,9 +263,9 @@ export const roadmapController = {
     try {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
-      if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
-      if (data.startDateAtividade) data.startDateAtividade = new Date(data.startDateAtividade);
-      if (data.finishDateAtividade) data.finishDateAtividade = new Date(data.finishDateAtividade);
+      if (data.plannedDate) data.plannedDate = parseDate(data.plannedDate);
+      if (data.startDateAtividade) data.startDateAtividade = parseDate(data.startDateAtividade);
+      if (data.finishDateAtividade) data.finishDateAtividade = parseDate(data.finishDateAtividade);
       if (data.completion !== undefined) data.completion = parseInt(data.completion);
 
       // Business Rule: Set finishDateAtividade if DONE and not provided
@@ -276,9 +283,9 @@ export const roadmapController = {
     try {
       const data = { ...req.body };
       if (data.assigneeId) data.assigneeId = parseInt(data.assigneeId);
-      if (data.plannedDate) data.plannedDate = new Date(data.plannedDate);
-      if (data.startDateAtividade) data.startDateAtividade = new Date(data.startDateAtividade);
-      if (data.finishDateAtividade) data.finishDateAtividade = new Date(data.finishDateAtividade);
+      if (data.plannedDate) data.plannedDate = parseDate(data.plannedDate);
+      if (data.startDateAtividade) data.startDateAtividade = parseDate(data.startDateAtividade);
+      if (data.finishDateAtividade) data.finishDateAtividade = parseDate(data.finishDateAtividade);
       if (data.completion !== undefined) data.completion = parseInt(data.completion);
 
       // Business Rule: Set finishDateAtividade if DONE and not provided
@@ -356,7 +363,7 @@ export const roadmapController = {
             description: item.description || null,
             status: (item.status || 'BACKLOG').toUpperCase(),
             effort: (item.effort || 'M').toUpperCase(),
-            plannedDate: item.plannedDate ? new Date(item.plannedDate) : null,
+            plannedDate: item.plannedDate ? parseDate(item.plannedDate) : null,
             completion: parseInt(item.completion) || 0,
             riskPoint: item.riskPoint || null,
             identifier: item.identifier || null,
@@ -443,9 +450,9 @@ export const roadmapController = {
             description: item.descricao || item.descrição || item.description || null,
             status: (item.status || 'BACKLOG').toUpperCase(),
             effort: (item.esforco || item.esforço || item.effort || 'M').toUpperCase(),
-            plannedDate: item.dataPrevista || item.data_prevista || item.plannedDate ? new Date(item.dataPrevista || item.data_prevista || item.plannedDate) : null,
-            startDateAtividade: item.dataInicio || item.data_inicio || item.startDateAtividade ? new Date(item.dataInicio || item.data_inicio || item.startDateAtividade) : null,
-            finishDateAtividade: item.dataFim || item.data_fim || item.finishDateAtividade ? new Date(item.dataFim || item.data_fim || item.finishDateAtividade) : null,
+            plannedDate: item.dataPrevista || item.data_prevista || item.plannedDate ? parseDate(item.dataPrevista || item.data_prevista || item.plannedDate) : null,
+            startDateAtividade: item.dataInicio || item.data_inicio || item.startDateAtividade ? parseDate(item.dataInicio || item.data_inicio || item.startDateAtividade) : null,
+            finishDateAtividade: item.dataFim || item.data_fim || item.finishDateAtividade ? parseDate(item.dataFim || item.data_fim || item.finishDateAtividade) : null,
             completion: parseInt(item.conclusao || item.conclusão || item.completion) || 0,
             riskPoint: item.risco || item.riskPoint || null,
             identifier: item.identificador || item.id || item.identifier || null,
@@ -550,9 +557,9 @@ export const projectController = {
     try {
       const data = { ...req.body };
       if (data.poId) data.poId = parseInt(data.poId);
-      if (data.startDate) data.startDate = new Date(data.startDate);
-      if (data.forecastDate) data.forecastDate = new Date(data.forecastDate);
-      if (data.finishDate) data.finishDate = new Date(data.finishDate);
+      if (data.startDate) data.startDate = parseDate(data.startDate);
+      if (data.forecastDate) data.forecastDate = parseDate(data.forecastDate);
+      if (data.finishDate) data.finishDate = parseDate(data.finishDate);
 
       // Business Rule: finishDate logically tied to status FINALIZADO
       if (data.status === 'FINALIZADO' && !data.finishDate) {
@@ -575,9 +582,9 @@ export const projectController = {
       
       const data = { ...rest };
       if (data.poId) data.poId = parseInt(data.poId);
-      if (data.startDate) data.startDate = new Date(data.startDate);
-      if (data.forecastDate) data.forecastDate = new Date(data.forecastDate);
-      if (data.finishDate) data.finishDate = new Date(data.finishDate);
+      if (data.startDate) data.startDate = parseDate(data.startDate);
+      if (data.forecastDate) data.forecastDate = parseDate(data.forecastDate);
+      if (data.finishDate) data.finishDate = parseDate(data.finishDate);
 
       // Business Rule: finishDate logically tied to status FINALIZADO
       if (data.status === 'FINALIZADO' && !data.finishDate) {

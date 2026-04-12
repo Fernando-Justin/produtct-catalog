@@ -24,14 +24,16 @@ const EFFORT_COLORS: Record<string, string> = {
 
 const formatDate = (dateStr: string | null | undefined) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
-  return d.toLocaleDateString('pt-BR');
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}/${year}`;
 };
 
 const formatDateShort = (dateStr: string | null | undefined) => {
   if (!dateStr) return '';
-  const d = new Date(dateStr.includes('T') ? dateStr : dateStr + 'T00:00:00');
-  return d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+  const datePart = dateStr.split('T')[0];
+  const [year, month, day] = datePart.split('-');
+  return `${day}/${month}`;
 };
 
 const emptyForm = { title: '', description: '', goalIndicator: '', startDateAtividade: '', plannedDate: '', effort: 'M', status: 'BACKLOG', assigneeId: '', identifier: '', confluenceUrl: '', completion: 0, riskPoint: '', projectId: '' };
